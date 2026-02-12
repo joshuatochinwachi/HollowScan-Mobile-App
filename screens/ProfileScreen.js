@@ -59,6 +59,16 @@ const ProfileScreen = () => {
     const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar_url || null);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Sync edit fields when user data loads/changes
+    useEffect(() => {
+        if (user) {
+            setEditName(user.name || '');
+            setEditBio(user.bio || '');
+            setEditLocation(user.location || '');
+            setSelectedAvatar(user.avatar_url || null);
+        }
+    }, [user]);
+
     // AVATAR PRESETS (DiceBear)
     const avatarPresets = [
         "https://api.dicebear.com/7.x/avataaars/png?seed=Felix",
@@ -143,7 +153,25 @@ const ProfileScreen = () => {
         }
     ];
 
-
+    const privacyContent = [
+        {
+            heading: "Information We Collect",
+            body: "We collect minimal data to provide our services:",
+            list: [
+                "Account Information: Email address and Name for identification.",
+                "Usage Data: Product views and search preferences to improve the feed.",
+                "Device Tokens: For sending push notifications (which you can disable)."
+            ]
+        },
+        {
+            heading: "How We Use Data",
+            body: "We do not sell your personal data to third parties. Data is used strictly for authentication, service improvement, and delivering alerts."
+        },
+        {
+            heading: "Data Security",
+            body: "We implement industry-standard security measures to protect your information. Your passwords are never stored in plain text."
+        }
+    ];
 
     const openSupport = () => {
         Linking.openURL(`mailto:${Constants.SUPPORT_EMAIL}`).catch(err => {
@@ -261,7 +289,7 @@ const ProfileScreen = () => {
                         <View style={{ gap: 12, width: '100%', marginTop: 15 }}>
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
-                                onPress={() => Alert.alert('Payment Method', 'Apple Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
+                                onPress={() => Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
                             >
                                 <LinearGradient
                                     colors={['#111111', '#222222']}
@@ -269,7 +297,7 @@ const ProfileScreen = () => {
                                     end={{ x: 1, y: 1 }}
                                     style={styles.upgradeGradient}
                                 >
-                                    <Text style={styles.upgradeText}>Pay with Apple Pay</Text>
+                                    <Text style={styles.upgradeText}>Pay with Google Pay</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -393,8 +421,6 @@ const ProfileScreen = () => {
                 >
                     <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
-
-
             </ScrollView>
 
             {/* INFO MODAL */}
