@@ -90,15 +90,15 @@ const DailyLimitModal = () => {
                                     </Text>
                                 </View>
 
-                                {/* Google Pay CTA */}
+                                {/* Google/Apple Pay CTA */}
                                 <TouchableOpacity
                                     style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 12 }}
                                     onPress={() => {
-                                        Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.');
+                                        Alert.alert('Payment Method', 'Apple Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.');
                                     }}
                                 >
                                     <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                        Pay with Google Pay
+                                        Pay with Apple Pay
                                     </Text>
                                 </TouchableOpacity>
 
