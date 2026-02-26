@@ -185,6 +185,41 @@ const ProfileScreen = () => {
         setInfoModalVisible(true);
     };
 
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            "Delete Account",
+            "Are you sure you want to permanently delete your account? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const email = user?.email;
+                            if (!email) {
+                                Alert.alert("Error", "Unable to find your account email. Please try again.");
+                                return;
+                            }
+                            const response = await fetch(
+                                `https://product.hollowscan.com/v1/user/account?email=${encodeURIComponent(email)}`,
+                                { method: 'DELETE' }
+                            );
+                            if (response.ok) {
+                                logout();
+                            } else {
+                                const data = await response.json().catch(() => ({}));
+                                Alert.alert("Error", data?.message || "Failed to delete account. Please try again.");
+                            }
+                        } catch (error) {
+                            Alert.alert("Error", "A network error occurred. Please check your connection and try again.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
 
     const SettingRow = ({ icon, label, value, onPress, status, isDestructive }) => (
         <TouchableOpacity style={styles.settingRow} onPress={onPress}>
@@ -356,6 +391,13 @@ const ProfileScreen = () => {
                         value={user?.email_verified ? "Verified" : "Not Verified"}
                         status={user?.email_verified ? "Your email is verified" : "Verify to unlock features"}
                     />
+                    <SettingRow
+                        icon="🗑️"
+                        label="Delete Account"
+                        status="Permanently remove your account"
+                        onPress={handleDeleteAccount}
+                        isDestructive={true}
+                    />
                 </View>
 
                 {/* INTEGRATIONS */}
@@ -420,6 +462,13 @@ const ProfileScreen = () => {
                     }}
                 >
                     <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.deleteAccountBtn}
+                    onPress={handleDeleteAccount}
+                >
+                    <Text style={styles.deleteAccountText}>🗑️  Delete Account</Text>
                 </TouchableOpacity>
             </ScrollView>
 
@@ -588,8 +637,10 @@ const styles = StyleSheet.create({
     settingLabel: { fontSize: 16, fontWeight: '600' },
     statusText: { fontSize: 12, marginTop: 4 },
     settingValue: { fontSize: 14 },
-    signOutBtn: { marginHorizontal: 20, marginTop: 15, marginBottom: 20, backgroundColor: '#FEF2F2', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
+    signOutBtn: { marginHorizontal: 20, marginTop: 15, marginBottom: 8, backgroundColor: '#FEF2F2', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
     signOutText: { color: '#EF4444', fontWeight: '700', fontSize: 16 },
+    deleteAccountBtn: { marginHorizontal: 20, marginTop: 4, marginBottom: 30, backgroundColor: '#450A0A', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#7F1D1D' },
+    deleteAccountText: { color: '#FCA5A5', fontWeight: '700', fontSize: 15 },
     version: { textAlign: 'center', color: '#D1D5DB', fontSize: 12 },
     blurContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center' },
