@@ -463,13 +463,6 @@ const ProfileScreen = () => {
                 >
                     <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.deleteAccountBtn}
-                    onPress={handleDeleteAccount}
-                >
-                    <Text style={styles.deleteAccountText}>🗑️  Delete Account</Text>
-                </TouchableOpacity>
             </ScrollView>
 
             {/* INFO MODAL */}
@@ -637,10 +630,8 @@ const styles = StyleSheet.create({
     settingLabel: { fontSize: 16, fontWeight: '600' },
     statusText: { fontSize: 12, marginTop: 4 },
     settingValue: { fontSize: 14 },
-    signOutBtn: { marginHorizontal: 20, marginTop: 15, marginBottom: 8, backgroundColor: '#FEF2F2', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
+    signOutBtn: { marginHorizontal: 20, marginTop: 15, marginBottom: 20, backgroundColor: '#FEF2F2', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
     signOutText: { color: '#EF4444', fontWeight: '700', fontSize: 16 },
-    deleteAccountBtn: { marginHorizontal: 20, marginTop: 4, marginBottom: 30, backgroundColor: '#450A0A', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#7F1D1D' },
-    deleteAccountText: { color: '#FCA5A5', fontWeight: '700', fontSize: 15 },
     version: { textAlign: 'center', color: '#D1D5DB', fontSize: 12 },
     blurContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center' },
