@@ -719,10 +719,10 @@ const HomeScreen = () => {
                                     </Text>
                                     <View style={{ flexDirection: 'row', gap: 10, width: '100%', justifyContent: 'center' }}>
                                         <TouchableOpacity
-                                            onPress={() => Alert.alert('Payment Method', 'Apple Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
+                                            onPress={() => Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
                                             style={{ flex: 1, maxWidth: 140, backgroundColor: isDarkMode ? '#FFF' : '#111', paddingVertical: 10, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
                                         >
-                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>Apple Pay</Text>
+                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>Google Pay</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity

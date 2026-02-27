@@ -324,7 +324,7 @@ const ProfileScreen = () => {
                         <View style={{ gap: 12, width: '100%', marginTop: 15 }}>
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
-                                onPress={() => Alert.alert('Payment Method', 'Apple Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
+                                onPress={() => Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
                             >
                                 <LinearGradient
                                     colors={['#111111', '#222222']}
@@ -332,7 +332,7 @@ const ProfileScreen = () => {
                                     end={{ x: 1, y: 1 }}
                                     style={styles.upgradeGradient}
                                 >
-                                    <Text style={styles.upgradeText}>Pay with Apple Pay</Text>
+                                    <Text style={styles.upgradeText}>Pay with Google Pay</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
 
