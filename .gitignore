@@ -42,5 +42,6 @@ yarn-error.*
 
 venv/
 
-# hollowscan-1b311-firebase-adminsdk-fbsvc-779a5875e8.json
-# GoogleService-Info.plist
+hollowscan-1b311-firebase-adminsdk-fbsvc-779a5875e8.json
+GoogleService-Info.plist
+
