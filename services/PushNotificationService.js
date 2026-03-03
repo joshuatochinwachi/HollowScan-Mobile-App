@@ -199,7 +199,7 @@ export const registerForPushNotifications = async (userId) => {
 
         if (Device.isDevice) {
             const token = (await Notifications.getExpoPushTokenAsync({
-                projectId: '7e28c380-d7d4-4f6d-82ab-4febe7aabf8e'
+                projectId: '7589d6ec-f110-43fc-8e06-ff5572a88bc5'
             })).data;
             console.log('[NOTIFICATIONS] Expo Push Token:', token);
 
