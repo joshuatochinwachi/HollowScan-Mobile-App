@@ -26,7 +26,12 @@ const { width } = Dimensions.get('window');
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
-    const { user, isDarkMode, toggleTheme, logout, selectedRegion, updateRegion, updateUserProfile, isPremium, linkTelegramAccount, telegramLinked, isPremiumTelegram, premiumUntil, checkTelegramStatus, refreshUserStatus } = useContext(UserContext);
+    const {
+        user, isDarkMode, toggleTheme, logout, selectedRegion, updateRegion,
+        updateUserProfile, isPremium, linkTelegramAccount, telegramLinked,
+        isPremiumTelegram, premiumUntil, checkTelegramStatus, refreshUserStatus,
+        purchasePremium
+    } = useContext(UserContext);
     const brand = Constants.BRAND;
 
     const colors = isDarkMode ? {
@@ -324,7 +329,7 @@ const ProfileScreen = () => {
                         <View style={{ gap: 12, width: '100%', marginTop: 15 }}>
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
-                                onPress={() => Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.')}
+                                onPress={() => purchasePremium('monthly')}
                             >
                                 <LinearGradient
                                     colors={['#111111', '#222222']}
@@ -333,6 +338,31 @@ const ProfileScreen = () => {
                                     style={styles.upgradeGradient}
                                 >
                                     <Text style={styles.upgradeText}>Pay with Google Pay</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.upgradeBtn}
+                                onPress={() => {
+                                    Alert.alert(
+                                        'Premium Yearly',
+                                        'Upgrade to Yearly Premium for best value?',
+                                        [
+                                            { text: 'Cancel', style: 'cancel' },
+                                            { text: 'Upgrade', onPress: () => purchasePremium('yearly') }
+                                        ]
+                                    );
+                                }}
+                            >
+                                <LinearGradient
+                                    colors={['#FFD700', '#FFA500']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                    style={styles.upgradeGradient}
+                                >
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium (Best Value) 👑</Text>
+                                    </View>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -350,6 +380,21 @@ const ProfileScreen = () => {
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
+                    )}
+
+                    {/* Show Manage Subscription if already premium via Google */}
+                    {(user?.isPremium && user?.subscriptionSource === 'google') && (
+                        <TouchableOpacity
+                            style={[styles.upgradeBtn, { marginTop: 15 }]}
+                            onPress={() => Linking.openURL('https://play.google.com/store/account/subscriptions')}
+                        >
+                            <LinearGradient
+                                colors={['#333333', '#444444']}
+                                style={styles.upgradeGradient}
+                            >
+                                <Text style={styles.upgradeText}>Manage Subscription</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
                     )}
                 </ImageBackground>
 
@@ -463,10 +508,10 @@ const ProfileScreen = () => {
                 >
                     <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
-            </ScrollView>
+            </ScrollView >
 
             {/* INFO MODAL */}
-            <InfoModal
+            < InfoModal
                 visible={infoModalVisible}
                 onClose={() => setInfoModalVisible(false)}
                 title={infoModalTitle}
@@ -476,7 +521,7 @@ const ProfileScreen = () => {
 
 
             {/* COUNTRY MODAL */}
-            <Modal
+            < Modal
                 visible={countryModalVisible}
                 animationType="fade"
                 transparent={true}
@@ -509,11 +554,11 @@ const ProfileScreen = () => {
                     </View>
                     <TouchableOpacity style={{ flex: 1, width: '100%' }} onPress={() => setCountryModalVisible(false)} />
                 </BlurView>
-            </Modal>
+            </Modal >
 
 
             {/* EDIT PROFILE MODAL */}
-            <Modal
+            < Modal
                 animationType="slide"
                 transparent={true}
                 visible={editModalVisible}
@@ -584,8 +629,8 @@ const ProfileScreen = () => {
                         </ScrollView>
                     </View>
                 </BlurView>
-            </Modal>
-        </SafeAreaView>
+            </Modal >
+        </SafeAreaView >
     );
 };
 

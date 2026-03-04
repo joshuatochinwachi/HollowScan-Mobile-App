@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Constants from '../Constants';
 import { registerForPushNotifications, setupNotificationHandler, unregisterPushToken } from '../services/PushNotificationService';
+import SubscriptionService from '../services/SubscriptionService';
 
 
 
@@ -42,11 +43,28 @@ export const UserProvider = ({ children }) => {
             await loadTheme();
             await loadRegion();
             setupNotificationHandler(); // Initialize global notification listener
+
+            // --- IAP Initialization ---
+            await SubscriptionService.initialize();
+            SubscriptionService.setupPurchaseListeners(
+                async (purchase) => {
+                    console.log('[IAP] Purchase verified successfully');
+                    await refreshUserStatus(); // Refresh premium status from backend
+                },
+                (error) => {
+                    console.warn('[IAP] Purchase flow error:', error);
+                }
+            );
+
             setIsLoading(false);
         };
 
 
         init();
+
+        return () => {
+            SubscriptionService.removeListeners();
+        };
     }, []);
 
     const loadRegion = async () => {
@@ -610,6 +628,19 @@ export const UserProvider = ({ children }) => {
         }
     };
 
+    const purchasePremium = async (planType = 'monthly') => {
+        if (!user?.id) return { success: false, message: 'Please login first' };
+        const sku = planType === 'yearly' ? 'premium_yearly' : 'premium_monthly';
+        try {
+            // We pass the user_id to the service so it can be sent to the backend for verification
+            SubscriptionService.currentUserId = user.id;
+            await SubscriptionService.requestSubscription(sku);
+            return { success: true };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    };
+
 
     const resetDailyViews = async () => {
         const newData = {
@@ -691,7 +722,8 @@ export const UserProvider = ({ children }) => {
                 countdown,
                 selectedRegion,
                 updateRegion,
-                syncPreferences
+                syncPreferences,
+                purchasePremium
             }}
         >
 

@@ -14,7 +14,8 @@ const DailyLimitModal = () => {
         isDarkMode,
         telegramLinked,
         checkTelegramStatus,
-        user
+        user,
+        purchasePremium
     } = useContext(UserContext);
     const navigation = useNavigation();
     const brand = Constants.BRAND;
@@ -93,12 +94,17 @@ const DailyLimitModal = () => {
                                 {/* Google/Apple Pay CTA */}
                                 <TouchableOpacity
                                     style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 12 }}
-                                    onPress={() => {
-                                        Alert.alert('Payment Method', 'Google Pay integration is coming soon! Please link your Telegram account to subscribe via our automated bot for now.');
+                                    onPress={async () => {
+                                        const result = await purchasePremium('monthly');
+                                        if (result.success) {
+                                            setShowLimitModal(false);
+                                        } else {
+                                            Alert.alert('Error', result.message || 'Purchase failed');
+                                        }
                                     }}
                                 >
                                     <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                        Pay with Google Pay
+                                        Unlock Premium - Monthly
                                     </Text>
                                 </TouchableOpacity>
 
