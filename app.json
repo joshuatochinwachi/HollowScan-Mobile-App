@@ -57,7 +57,8 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "react-native-iap"
     ],
     "extra": {
       "eas": {
