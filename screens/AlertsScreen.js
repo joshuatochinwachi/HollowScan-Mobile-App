@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from '../Constants';
 import { UserContext } from '../context/UserContext';
-import { requestNotificationPermissions } from '../services/PushNotificationService';
+import { registerForPushNotifications } from '../services/PushNotificationService'; // ✅ FIXED
 
 const STORAGE_KEY_NOTIFICATIONS = '@hollowscan_notifications_enabled';
 const STORAGE_KEY_SUBS = '@hollowscan_subscriptions';
@@ -113,7 +113,6 @@ const AlertsScreen = () => {
             await AsyncStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(enabled));
             if (subs) await AsyncStorage.setItem(STORAGE_KEY_SUBS, JSON.stringify(subs));
 
-            // Debounced or direct cloud sync
             syncWithCloud(enabled, subs || selectedSubs);
         } catch (e) {
             console.error('Failed to save preferences', e);
@@ -154,11 +153,11 @@ const AlertsScreen = () => {
         }
     };
 
-    // Master Toggle Handler (Migrated from Profile)
+    // ✅ FIXED: Master Toggle Handler
     const handleNotificationsToggle = async (value) => {
         if (value) {
-            const hasPermission = await requestNotificationPermissions();
-            if (hasPermission) {
+            const token = await registerForPushNotifications(user?.id);
+            if (token) {
                 setNotificationsEnabled(true);
                 savePreferences(true, selectedSubs);
                 Alert.alert('✓ Notifications Active', 'You will now receive alerts for your selected stores.');
@@ -289,7 +288,6 @@ const AlertsScreen = () => {
                                     onPress={() => {
                                         if (!notificationsEnabled) return;
                                         setMinDiscount(val);
-                                        // Trigger sync after a short delay or directly
                                         setTimeout(() => syncWithCloud(notificationsEnabled, selectedSubs), 100);
                                     }}
                                     disabled={!notificationsEnabled}
@@ -325,7 +323,7 @@ const AlertsScreen = () => {
                                 onPress={() => updateRegion(region)}
                             >
                                 <Text style={[styles.tabText, { color: isTabActive ? '#FFF' : colors.textSecondary }]}>
-                                    {region.split(' ')[0]} {/* USA / UK / Canada (shortened) */}
+                                    {region.split(' ')[0]}
                                 </Text>
                             </TouchableOpacity>
                         );
@@ -382,7 +380,6 @@ const styles = StyleSheet.create({
 
     scroll: { padding: 20 },
 
-    // Master Switch Card
     masterCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -399,7 +396,6 @@ const styles = StyleSheet.create({
     masterTitle: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
     masterDesc: { fontSize: 13, lineHeight: 18, paddingRight: 10 },
 
-    // Info Banner
     infoBanner: {
         flexDirection: 'row',
         padding: 14,
@@ -410,7 +406,6 @@ const styles = StyleSheet.create({
     },
     infoText: { fontSize: 13, lineHeight: 20, flex: 1 },
 
-    // Tabs
     tabsContainer: {
         flexDirection: 'row',
         padding: 4,
@@ -425,19 +420,16 @@ const styles = StyleSheet.create({
     },
     tabText: { fontSize: 14, fontWeight: '700' },
 
-    // Grid
     grid: { gap: 12 },
     bulkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },
     sectionHeader: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
 
-    // Store Card
     storeCard: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         borderRadius: 20,
         borderWidth: 1,
-        // Cozy shadow
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.03,
@@ -447,7 +439,6 @@ const styles = StyleSheet.create({
     storeName: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
     storeStatus: { fontSize: 12, fontWeight: '600' },
 
-    // Filter UI
     filterCard: { padding: 20, borderRadius: 24, borderWidth: 1, marginBottom: 16 },
     filterTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
     filterDesc: { fontSize: 13, marginBottom: 16 },
