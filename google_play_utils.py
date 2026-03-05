@@ -12,20 +12,27 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-# Path to your service account JSON file
-SERVICE_ACCOUNT_FILE = "glossy-metric-455008-p1-55180b5daaf8.json"
+# Environment Variable for Service Account JSON
+GOOGLE_PAY_SECRET_ENV = "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
 PACKAGE_NAME = "com.kttylabs.app" # As seen in your Play Console screenshot
 
 def get_google_play_service():
     """Authenticates and returns the Google Play Developer API service."""
-    if not os.path.exists(SERVICE_ACCOUNT_FILE):
-        print(f"[GOOGLE] Error: Service account file {SERVICE_ACCOUNT_FILE} not found.")
+    service_account_info = os.getenv(GOOGLE_PAY_SECRET_ENV)
+    
+    if not service_account_info:
+        print(f"[GOOGLE] Error: Environment variable {GOOGLE_PAY_SECRET_ENV} not set.")
         return None
         
-    scopes = ['https://www.googleapis.com/auth/androidpublisher']
-    creds = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=scopes)
-    return build('androidpublisher', 'v3', credentials=creds)
+    try:
+        # Load JSON from string
+        info = json.loads(service_account_info)
+        scopes = ['https://www.googleapis.com/auth/androidpublisher']
+        creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+        return build('androidpublisher', 'v3', credentials=creds)
+    except Exception as e:
+        print(f"[GOOGLE] Error parsing service account JSON: {e}")
+        return None
 
 async def verify_subscription(purchase_token: str, product_id: str):
     """
