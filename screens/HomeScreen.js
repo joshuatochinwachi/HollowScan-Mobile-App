@@ -26,7 +26,7 @@ import Constants from '../Constants';
 import { SavedContext } from '../context/SavedContext';
 import { UserContext } from '../context/UserContext';
 import LiveProductService from '../services/LiveProductService';
-import { setupNotificationHandler, sendDealNotification } from '../services/PushNotificationService';
+import { setupNotificationHandler } from '../services/PushNotificationService';
 import { formatPriceDisplay } from '../utils/format';
 
 const { width } = Dimensions.get('window');
@@ -241,7 +241,8 @@ const HomeScreen = () => {
 
                 if (currentDiscount < minDiscount) return;
 
-                sendDealNotification(product);
+                // Removed local notification call to rely on backend push
+                // sendDealNotification(product);
             });
         });
 
