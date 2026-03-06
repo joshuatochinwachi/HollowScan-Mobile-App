@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import ExpoConstants from 'expo-constants';
 import AppConstants from '../Constants';
+import * as NavigationService from './NavigationService';
 
 // ─── CRITICAL: This MUST be at the top level of the file, outside all functions ───
 // This controls how notifications appear when the app is in the FOREGROUND.
@@ -70,9 +71,8 @@ const handleNotificationTap = (data) => {
     console.log('[PUSH] Notification data:', data);
 
     if (data.product_id) {
-        console.log('[PUSH] Should navigate to product:', data.product_id);
-        // TODO: Uncomment and use your navigation service once ready:
-        // NavigationService.navigate('ProductDetail', { productId: data.product_id });
+        console.log('[PUSH] Navigating to product:', data.product_id);
+        NavigationService.navigate('ProductDetail', { productId: data.product_id });
     }
 };
 
