@@ -1,27 +1,39 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import Constants from '../Constants';
-import * as NavigationService from './NavigationService';
+import ExpoConstants from 'expo-constants';
+import AppConstants from '../Constants';
 
-// Controls how notifications appear when the app IS in foreground
+// ─── CRITICAL: This MUST be at the top level of the file, outside all functions ───
+// This controls how notifications appear when the app is in the FOREGROUND.
+// Without this, foreground notifications are silently swallowed.
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
+});
+// ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Sets up listeners for:
+ * 1. Notifications received while app is in foreground
+ * 2. User tapping a notification (foreground or background)
+ *
+ * Call this once in App.js useEffect on mount.
+ * Returns a cleanup function — call it on unmount.
+ */
 export const setupNotificationHandler = () => {
-    Notifications.setNotificationHandler({
-        handleNotification: async () => ({
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: true,
-        }),
-    });
-
-    // Fires when notification arrives and app is in foreground
+    // Fires when a notification arrives and the app is open (foreground)
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
         console.log('[PUSH] Notification received in foreground:', notification);
     });
 
-    // Fires when user TAPS a notification (foreground or background)
+    // Fires when the user taps a notification (foreground or background states)
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log('[PUSH] User tapped notification');
         handleNotificationTap(response.notification.request.content.data);
     });
 
@@ -31,32 +43,54 @@ export const setupNotificationHandler = () => {
     };
 };
 
-// Call this in App.js useEffect on mount.
-// Handles tap on a notification that opened the app from KILLED state.
+/**
+ * Handles the case where the app was KILLED (not running) and the user
+ * tapped a notification to open it.
+ *
+ * In this state, addNotificationResponseReceivedListener does NOT fire
+ * because the app wasn't running. Instead, we must call this manually
+ * at app startup to check if the app was opened via a notification tap.
+ *
+ * Call this in App.js useEffect on mount, after setupNotificationHandler().
+ */
 export const handleKilledAppNotification = () => {
     const response = Notifications.getLastNotificationResponse();
     if (response) {
-        console.log('[PUSH] App opened via notification tap from killed state');
+        console.log('[PUSH] App was opened from killed state via notification tap');
         handleNotificationTap(response.notification.request.content.data);
     }
 };
 
+/**
+ * Internal handler — called when user taps any notification.
+ * Add your navigation logic here.
+ */
 const handleNotificationTap = (data) => {
     if (!data) return;
+    console.log('[PUSH] Notification data:', data);
+
     if (data.product_id) {
-        console.log('[PUSH] Navigate to product:', data.product_id);
-        NavigationService.navigate('ProductDetail', { productId: data.product_id });
+        console.log('[PUSH] Should navigate to product:', data.product_id);
+        // TODO: Uncomment and use your navigation service once ready:
+        // NavigationService.navigate('ProductDetail', { productId: data.product_id });
     }
 };
 
-// Requests permission + registers Expo push token + saves to backend
+/**
+ * Requests push notification permission from the user,
+ * registers the device with Expo Push Service,
+ * and saves the Expo Push Token to the backend.
+ *
+ * Call this after the user logs in and you have a userId.
+ */
 export const registerForPushNotifications = async (userId) => {
     try {
         if (!Device.isDevice) {
-            console.log('[PUSH] Not a real device — skipping registration');
+            console.log('[PUSH] Skipping — not a real physical device');
             return null;
         }
 
+        // Request permission
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
         if (existingStatus !== 'granted') {
@@ -64,44 +98,63 @@ export const registerForPushNotifications = async (userId) => {
             finalStatus = status;
         }
         if (finalStatus !== 'granted') {
-            console.log('[PUSH] Permission denied');
+            console.log('[PUSH] Permission denied by user');
             return null;
         }
 
-        // Android: ensure the 'default' channel exists
-        // Must match channelId sent by backend in send_expo_push_notification()
+        // Android: register the notification channel
+        // The channel name 'default' must match the channelId sent by the backend
         if (Platform.OS === 'android') {
             await Notifications.setNotificationChannelAsync('default', {
                 name: 'Default',
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
+                lightColor: '#E94560',
                 sound: 'default',
                 enableVibrate: true,
                 showBadge: true,
             });
         }
 
-        const token = (await Notifications.getExpoPushTokenAsync({
-            projectId: '7589d6ec-f110-43fc-8e06-ff5572a88bc5'  // matches EAS projectId
-        })).data;
+        // Get the projectId from app config (most reliable method)
+        const projectId =
+            ExpoConstants?.expoConfig?.extra?.eas?.projectId ??
+            ExpoConstants?.easConfig?.projectId;
 
-        console.log('[PUSH] Expo Push Token:', token);
-        if (userId) await savePushTokenToBackend(userId, token);
+        if (!projectId) {
+            console.log('[PUSH] ERROR: projectId not found in app config');
+            return null;
+        }
+
+        // Get the Expo Push Token for this device
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.log('[PUSH] Expo Push Token obtained:', token);
+
+        // Save the token to the backend so the server can send notifications
+        if (userId) {
+            await savePushTokenToBackend(userId, token);
+        }
+
         return token;
     } catch (error) {
-        console.log('[PUSH] Error registering:', error);
+        console.log('[PUSH] Error registering for push notifications:', error);
         return null;
     }
 };
 
-// Saves token to backend — calls POST /v1/user/push-token
+/**
+ * Saves the Expo Push Token to the backend.
+ * Calls POST /v1/user/push-token
+ */
 export const savePushTokenToBackend = async (userId, token) => {
     try {
+        const API_BASE_URL = AppConstants.API_BASE_URL;
         const response = await fetch(
-            `${Constants.API_BASE_URL}/v1/user/push-token?user_id=${userId}&token=${token}`,
+            `${API_BASE_URL}/v1/user/push-token?user_id=${userId}&token=${encodeURIComponent(token)}`,
             { method: 'POST' }
         );
         const data = await response.json();
+        console.log('[PUSH] Token saved to backend:', data.success);
         return data.success;
     } catch (error) {
         console.log('[PUSH] Error saving token to backend:', error);
@@ -109,17 +162,22 @@ export const savePushTokenToBackend = async (userId, token) => {
     }
 };
 
-// Removes token on logout — calls DELETE /v1/user/push-token
+/**
+ * Removes the push token from the backend on logout.
+ * Calls DELETE /v1/user/push-token
+ */
 export const unregisterPushToken = async (userId, token) => {
     try {
+        const API_BASE_URL = AppConstants.API_BASE_URL;
         const response = await fetch(
-            `${Constants.API_BASE_URL}/v1/user/push-token?user_id=${userId}&token=${token}`,
+            `${API_BASE_URL}/v1/user/push-token?user_id=${userId}&token=${encodeURIComponent(token)}`,
             { method: 'DELETE' }
         );
         const data = await response.json();
+        console.log('[PUSH] Token removed from backend:', data.success);
         return data.success;
     } catch (error) {
-        console.log('[PUSH] Error unregistering token:', error);
+        console.log('[PUSH] Error removing token from backend:', error);
         return false;
     }
 };
