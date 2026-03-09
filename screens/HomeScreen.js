@@ -46,7 +46,7 @@ const getRelativeTime = (dateString) => {
 
 const HomeScreen = () => {
     const navigation = useNavigation();
-    const { user, isDarkMode, getRemainingViews, trackProductView, isPremium: userIsPremium, telegramLinked, checkTelegramStatus, refreshUserStatus, selectedRegion, updateRegion, purchasePremium } = useContext(UserContext);
+    const { user, isDarkMode, getRemainingViews, trackProductView, isPremium: userIsPremium, telegramLinked, checkTelegramStatus, refreshUserStatus, selectedRegion, updateRegion, purchasePremium, getPlanPrice } = useContext(UserContext);
 
     // CONFIG
     const LIMIT = 10;
@@ -718,7 +718,7 @@ const HomeScreen = () => {
                                     <Text style={[styles.paywallText, { color: colors.text, textAlign: 'center' }]}>
                                         🔒 <Text style={{ fontWeight: 'bold' }}>Unlock all {totalAvailable}+ daily deals</Text>
                                     </Text>
-                                    <View style={{ flexDirection: 'row', gap: 10, width: '100%', justifyContent: 'center' }}>
+                                    <View style={{ flexDirection: 'row', gap: 6, width: '100%', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 10 }}>
                                         <TouchableOpacity
                                             onPress={async () => {
                                                 const result = await purchasePremium('monthly');
@@ -726,16 +726,31 @@ const HomeScreen = () => {
                                                     Alert.alert('Error', result.message);
                                                 }
                                             }}
-                                            style={{ flex: 1, maxWidth: 140, backgroundColor: isDarkMode ? '#FFF' : '#111', paddingVertical: 10, borderRadius: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                                            style={{ flex: 1, minWidth: 100, backgroundColor: isDarkMode ? '#FFF' : '#111', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>Google Pay</Text>
+                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>Monthly</Text>
+                                            <Text style={{ color: isDarkMode ? '#666' : '#AAA', fontSize: 10, marginTop: 2 }}>{getPlanPrice('premium_monthly')}</Text>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            onPress={async () => {
+                                                const result = await purchasePremium('yearly');
+                                                if (!result.success && result.message) {
+                                                    Alert.alert('Error', result.message);
+                                                }
+                                            }}
+                                            style={{ flex: 1, minWidth: 100, backgroundColor: '#FFD700', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            <Text style={{ color: '#000', fontWeight: '900', fontSize: 13 }}>Yearly 👑</Text>
+                                            <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 10, marginTop: 2, fontWeight: '700' }}>{getPlanPrice('premium_yearly')}</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
                                             onPress={() => navigation.navigate('TelegramLink')}
-                                            style={{ flex: 1, maxWidth: 140, backgroundColor: '#0088cc', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ flex: 1, minWidth: 100, backgroundColor: '#0EA5E9', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 13 }}>Telegram Link</Text>
+                                            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 13 }}>Telegram</Text>
+                                            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 10, marginTop: 2, fontWeight: '600' }}>Connect Bot</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </View>
