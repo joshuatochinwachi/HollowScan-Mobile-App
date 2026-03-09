@@ -99,12 +99,17 @@ const DailyLimitModal = () => {
                                         if (result.success) {
                                             setShowLimitModal(false);
                                         } else {
-                                            Alert.alert('Error', result.message || 'Purchase failed');
+                                            if (result.message !== 'Purchase cancelled') {
+                                                Alert.alert('Error', result.message || 'Purchase failed');
+                                            }
                                         }
                                     }}
                                 >
                                     <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
                                         Unlock Premium - Monthly
+                                    </Text>
+                                    <Text style={{ color: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textAlign: 'center', marginTop: 2 }}>
+                                        Check Price in Store
                                     </Text>
                                 </TouchableOpacity>
 

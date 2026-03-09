@@ -595,6 +595,7 @@ export const UserProvider = ({ children }) => {
                 // Refresh all statuses for the new user
                 checkTelegramStatus(userData.id);
                 refreshUserStatus(userData);
+                SubscriptionService.setCurrentUserId(userData.id);
             }
         } catch (error) {
             console.error('[USER] Error updating user:', error);

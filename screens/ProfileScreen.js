@@ -86,6 +86,10 @@ const ProfileScreen = () => {
         "https://api.dicebear.com/7.x/avataaars/png?seed=Garfield"
     ];
 
+    // --- SUBSCRIPTION PLANS STATE ---
+    const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+    const [isFetchingPlans, setIsFetchingPlans] = useState(false);
+
     // Refresh Telegram status when screen loads or gains focus
     useFocusEffect(
         useCallback(() => {
@@ -94,11 +98,32 @@ const ProfileScreen = () => {
                     console.log('[PROFILE] Refreshing status on focus...');
                     await checkTelegramStatus();
                     await refreshUserStatus();
+
+                    // Fetch IAP plans
+                    setIsFetchingPlans(true);
+                    const plans = await SubscriptionService.getSubscriptions();
+                    setSubscriptionPlans(plans);
+                    setIsFetchingPlans(false);
                 }
             };
             refreshStatus();
         }, [user?.id])
     );
+
+    const getPlanPrice = (sku) => {
+        const plan = subscriptionPlans.find(p => p.productId === sku);
+        if (plan) {
+            // Android uses subscriptionOfferDetails
+            if (plan.subscriptionOfferDetails && plan.subscriptionOfferDetails.length > 0) {
+                const offer = plan.subscriptionOfferDetails[0];
+                if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList.length > 0) {
+                    return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
+                }
+            }
+            return plan.localizedPrice || '...';
+        }
+        return '...';
+    };
 
     const saveProfile = async () => {
         setIsSaving(true);
@@ -337,7 +362,12 @@ const ProfileScreen = () => {
                                     end={{ x: 1, y: 1 }}
                                     style={styles.upgradeGradient}
                                 >
-                                    <Text style={styles.upgradeText}>Pay with Google Pay</Text>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={styles.upgradeText}>Unlock Monthly Premium</Text>
+                                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
+                                            {getPlanPrice('premium_monthly')} / month
+                                        </Text>
+                                    </View>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -360,8 +390,11 @@ const ProfileScreen = () => {
                                     end={{ x: 1, y: 1 }}
                                     style={styles.upgradeGradient}
                                 >
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <View style={{ alignItems: 'center' }}>
                                         <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium (Best Value) 👑</Text>
+                                        <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 12, fontWeight: '700' }}>
+                                            {getPlanPrice('premium_yearly')} / year
+                                        </Text>
                                     </View>
                                 </LinearGradient>
                             </TouchableOpacity>

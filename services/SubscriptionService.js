@@ -14,15 +14,21 @@ class SubscriptionService {
     constructor() {
         this.purchaseUpdateSubscription = null;
         this.purchaseErrorSubscription = null;
+        this.currentUserId = null;
+    }
+
+    setCurrentUserId(userId) {
+        this.currentUserId = userId;
+        console.log('[IAP] User ID set for verification:', userId);
     }
 
     async initialize() {
         try {
-            await RNIAP.initConnection();
+            const result = await RNIAP.initConnection();
+            console.log('[IAP] Connection initialized:', result);
             if (Platform.OS === 'android') {
                 await RNIAP.flushFailedPurchasesCachedAsPendingAndroid();
             }
-            console.log('[IAP] Connection initialized');
         } catch (err) {
             console.warn('[IAP] Connection error', err.code, err.message);
         }
@@ -30,7 +36,9 @@ class SubscriptionService {
 
     async getSubscriptions() {
         try {
+            console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
             const products = await RNIAP.getSubscriptions({ skus: itemSkus });
+            console.log('[IAP] Products found:', products.length);
             return products;
         } catch (err) {
             console.warn('[IAP] Error fetching subscriptions', err);
@@ -40,6 +48,8 @@ class SubscriptionService {
 
     async requestSubscription(sku) {
         try {
+            console.log('[IAP] Requesting subscription for:', sku);
+            // On Android, we just need the sku
             await RNIAP.requestSubscription({ sku });
         } catch (err) {
             console.warn('[IAP] Error requesting subscription', err.code, err.message);
@@ -47,8 +57,30 @@ class SubscriptionService {
         }
     }
 
+    async restorePurchases() {
+        try {
+            console.log('[IAP] Restoring purchases...');
+            const purchases = await RNIAP.getAvailablePurchases();
+            console.log('[IAP] Available purchases:', purchases.length);
+
+            let restoredCount = 0;
+            for (const purchase of purchases) {
+                const isVerified = await this.verifyWithBackend(purchase);
+                if (isVerified) {
+                    await RNIAP.finishTransaction({ purchase, isConsumable: false });
+                    restoredCount++;
+                }
+            }
+            return restoredCount > 0;
+        } catch (err) {
+            console.warn('[IAP] Restore error', err);
+            return false;
+        }
+    }
+
     setupPurchaseListeners(onSuccess, onError) {
         this.purchaseUpdateSubscription = RNIAP.purchaseUpdatedListener(async (purchase) => {
+            console.log('[IAP] Purchase updated:', purchase.productId);
             const receipt = purchase.transactionReceipt;
             if (receipt) {
                 try {
@@ -56,8 +88,10 @@ class SubscriptionService {
                     const isVerified = await this.verifyWithBackend(purchase);
                     if (isVerified) {
                         await RNIAP.finishTransaction({ purchase, isConsumable: false });
+                        console.log('[IAP] Transaction finished successfully');
                         onSuccess && onSuccess(purchase);
                     } else {
+                        console.warn('[IAP] Verification failed for:', purchase.productId);
                         onError && onError('Verification failed');
                     }
                 } catch (ackErr) {
@@ -69,24 +103,33 @@ class SubscriptionService {
 
         this.purchaseErrorSubscription = RNIAP.purchaseErrorListener((error) => {
             console.warn('[IAP] Purchase Error', error);
-            onError && onError(error.message);
+            // Don't show alert for user cancellation (code 2 on Android)
+            if (error?.code !== 'E_USER_CANCELLED') {
+                onError && onError(error.message || 'Purchase failed');
+            }
         });
     }
 
     async verifyWithBackend(purchase) {
+        if (!this.currentUserId) {
+            console.error('[IAP] Cannot verify: currentUserId is null');
+            return false;
+        }
+
         try {
-            // Assuming purchase.transactionReceipt contains the token on Android
+            console.log('[IAP] Verifying with backend for user:', this.currentUserId);
             const response = await fetch(`${API_BASE_URL}/v1/auth/google-play/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: this.currentUserId, // This needs to be passed correctly from context
+                    user_id: this.currentUserId,
                     purchase_token: purchase.purchaseToken,
                     product_id: purchase.productId,
                 }),
             });
 
             const data = await response.json();
+            console.log('[IAP] Backend verification result:', data.success);
             return data.success;
         } catch (err) {
             console.error('[IAP] Backend verification error', err);
