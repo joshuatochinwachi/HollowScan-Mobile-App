@@ -329,7 +329,12 @@ const ProfileScreen = () => {
                         <View style={{ gap: 12, width: '100%', marginTop: 15 }}>
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
-                                onPress={() => purchasePremium('monthly')}
+                                onPress={async () => {
+                                    const result = await purchasePremium('monthly');
+                                    if (!result.success && result.message && result.message !== 'Purchase cancelled') {
+                                        Alert.alert('Error', result.message);
+                                    }
+                                }}
                             >
                                 <LinearGradient
                                     colors={['#111111', '#222222']}
@@ -348,15 +353,11 @@ const ProfileScreen = () => {
 
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Premium Yearly',
-                                        'Upgrade to Yearly Premium for best value?',
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            { text: 'Upgrade', onPress: () => purchasePremium('yearly') }
-                                        ]
-                                    );
+                                onPress={async () => {
+                                    const result = await purchasePremium('yearly');
+                                    if (!result.success && result.message && result.message !== 'Purchase cancelled') {
+                                        Alert.alert('Error', result.message);
+                                    }
                                 }}
                             >
                                 <LinearGradient

@@ -1,9 +1,8 @@
 import { Platform } from 'react-native';
 import {
     initConnection,
-    flushFailedPurchasesCachedAsPendingAndroid,
-    getSubscriptions as getRniapSubscriptions,
-    requestSubscription as rniapRequestSubscription,
+    fetchProducts,
+    requestPurchase,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -36,9 +35,6 @@ class SubscriptionService {
         try {
             const result = await initConnection();
             console.log('[IAP] Connection initialized:', result);
-            if (Platform.OS === 'android') {
-                await flushFailedPurchasesCachedAsPendingAndroid();
-            }
         } catch (err) {
             console.warn('[IAP] Connection error', err.code, err.message);
         }
@@ -47,9 +43,9 @@ class SubscriptionService {
     async getSubscriptions() {
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await getRniapSubscriptions({ skus: itemSkus });
-            console.log('[IAP] Products found:', products.length);
-            return products;
+            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
+            console.log('[IAP] Products found:', products?.length || 0);
+            return products || [];
         } catch (err) {
             console.warn('[IAP] Error fetching subscriptions', err);
             return [];
@@ -61,9 +57,9 @@ class SubscriptionService {
             console.log('[IAP] Requesting subscription for:', sku);
 
             if (Platform.OS === 'android') {
-                // For Android (react-native-iap v12+), we MUST fetch the product first to get the offerToken
-                const products = await getRniapSubscriptions({ skus: [sku] });
-                const product = products.find(p => p.productId === sku);
+                // For Android (react-native-iap v14+), fetch product first to get the offerToken
+                const products = await fetchProducts({ skus: [sku], type: 'subs' });
+                const product = products?.find(p => p.productId === sku);
 
                 if (!product) {
                     throw new Error(`Product ${sku} not found. Please ensure it's "Active" in Play Console.`);
@@ -76,13 +72,25 @@ class SubscriptionService {
                     throw new Error(`Price/Offer not found for ${sku}. Check if the Base Plan is "Activated".`);
                 }
 
-                await rniapRequestSubscription({
-                    sku: sku,
-                    subscriptionOffers: [{ sku: sku, offerToken }]
+                await requestPurchase({
+                    type: 'subs',
+                    request: {
+                        google: {
+                            skus: [sku],
+                            subscriptionOffers: [{ sku: sku, offerToken }]
+                        }
+                    }
                 });
             } else {
                 // iOS
-                await rniapRequestSubscription({ sku });
+                await requestPurchase({
+                    type: 'subs',
+                    request: {
+                        apple: {
+                            sku: sku
+                        }
+                    }
+                });
             }
         } catch (err) {
             console.warn('[IAP] Error requesting subscription', err.code, err.message);

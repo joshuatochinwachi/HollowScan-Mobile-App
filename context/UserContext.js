@@ -108,18 +108,23 @@ export const UserProvider = ({ children }) => {
     };
 
     const getPlanPrice = (sku) => {
+        const FALLBACK_PRICES = {
+            premium_monthly: '£4.99',
+            premium_yearly: '£55.50',
+        };
         const plan = subscriptionPlans.find(p => p.productId === sku);
         if (plan) {
-            // Android uses subscriptionOfferDetails
+            // Android uses subscriptionOfferDetails in v14
             if (plan.subscriptionOfferDetails && plan.subscriptionOfferDetails.length > 0) {
                 const offer = plan.subscriptionOfferDetails[0];
-                if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList.length > 0) {
+                if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList && offer.pricingPhases.pricingPhaseList.length > 0) {
                     return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
                 }
             }
-            return plan.localizedPrice || '...';
+            // Fallback to iOS/legacy standard price
+            return plan.localizedPrice || plan.price || FALLBACK_PRICES[sku] || '£4.99';
         }
-        return '...';
+        return FALLBACK_PRICES[sku] || '£4.99';
     };
 
     const loadTheme = async () => {
