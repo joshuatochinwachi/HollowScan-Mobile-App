@@ -30,7 +30,7 @@ const ProfileScreen = () => {
         user, isDarkMode, toggleTheme, logout, selectedRegion, updateRegion,
         updateUserProfile, isPremium, linkTelegramAccount, telegramLinked,
         isPremiumTelegram, premiumUntil, checkTelegramStatus, refreshUserStatus,
-        purchasePremium
+        purchasePremium, getPlanPrice
     } = useContext(UserContext);
     const brand = Constants.BRAND;
 
@@ -86,10 +86,6 @@ const ProfileScreen = () => {
         "https://api.dicebear.com/7.x/avataaars/png?seed=Garfield"
     ];
 
-    // --- SUBSCRIPTION PLANS STATE ---
-    const [subscriptionPlans, setSubscriptionPlans] = useState([]);
-    const [isFetchingPlans, setIsFetchingPlans] = useState(false);
-
     // Refresh Telegram status when screen loads or gains focus
     useFocusEffect(
         useCallback(() => {
@@ -98,32 +94,11 @@ const ProfileScreen = () => {
                     console.log('[PROFILE] Refreshing status on focus...');
                     await checkTelegramStatus();
                     await refreshUserStatus();
-
-                    // Fetch IAP plans
-                    setIsFetchingPlans(true);
-                    const plans = await SubscriptionService.getSubscriptions();
-                    setSubscriptionPlans(plans);
-                    setIsFetchingPlans(false);
                 }
             };
             refreshStatus();
-        }, [user?.id])
+        }, [user?.id, checkTelegramStatus, refreshUserStatus])
     );
-
-    const getPlanPrice = (sku) => {
-        const plan = subscriptionPlans.find(p => p.productId === sku);
-        if (plan) {
-            // Android uses subscriptionOfferDetails
-            if (plan.subscriptionOfferDetails && plan.subscriptionOfferDetails.length > 0) {
-                const offer = plan.subscriptionOfferDetails[0];
-                if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList.length > 0) {
-                    return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
-                }
-            }
-            return plan.localizedPrice || '...';
-        }
-        return '...';
-    };
 
     const saveProfile = async () => {
         setIsSaving(true);

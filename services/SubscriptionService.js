@@ -1,5 +1,15 @@
 import { Platform } from 'react-native';
-import * as RNIAP from 'react-native-iap';
+import {
+    initConnection,
+    flushFailedPurchasesCachedAsPendingAndroid,
+    getSubscriptions as getRniapSubscriptions,
+    requestSubscription as rniapRequestSubscription,
+    finishTransaction,
+    purchaseUpdatedListener,
+    purchaseErrorListener,
+    getAvailablePurchases,
+    endConnection
+} from 'react-native-iap';
 import Constants from '../Constants';
 
 const API_BASE_URL = Constants.API_BASE_URL;
@@ -24,10 +34,10 @@ class SubscriptionService {
 
     async initialize() {
         try {
-            const result = await RNIAP.initConnection();
+            const result = await initConnection();
             console.log('[IAP] Connection initialized:', result);
             if (Platform.OS === 'android') {
-                await RNIAP.flushFailedPurchasesCachedAsPendingAndroid();
+                await flushFailedPurchasesCachedAsPendingAndroid();
             }
         } catch (err) {
             console.warn('[IAP] Connection error', err.code, err.message);
@@ -37,7 +47,7 @@ class SubscriptionService {
     async getSubscriptions() {
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await RNIAP.getSubscriptions({ skus: itemSkus });
+            const products = await getRniapSubscriptions({ skus: itemSkus });
             console.log('[IAP] Products found:', products.length);
             return products;
         } catch (err) {
@@ -49,10 +59,35 @@ class SubscriptionService {
     async requestSubscription(sku) {
         try {
             console.log('[IAP] Requesting subscription for:', sku);
-            // On Android, we just need the sku
-            await RNIAP.requestSubscription({ sku });
+
+            if (Platform.OS === 'android') {
+                // For Android (react-native-iap v12+), we MUST fetch the product first to get the offerToken
+                const products = await getRniapSubscriptions({ skus: [sku] });
+                const product = products.find(p => p.productId === sku);
+
+                if (!product) {
+                    throw new Error(`Product ${sku} not found. Please ensure it's "Active" in Play Console.`);
+                }
+
+                // Get the first offer token (default base plan)
+                const offerToken = product.subscriptionOfferDetails?.[0]?.offerToken;
+
+                if (!offerToken) {
+                    throw new Error(`Price/Offer not found for ${sku}. Check if the Base Plan is "Activated".`);
+                }
+
+                await rniapRequestSubscription({
+                    sku: sku,
+                    subscriptionOffers: [{ sku: sku, offerToken }]
+                });
+            } else {
+                // iOS
+                await rniapRequestSubscription({ sku });
+            }
         } catch (err) {
             console.warn('[IAP] Error requesting subscription', err.code, err.message);
+            // Translate cancellation codes to user-friendly messages
+            if (err.code === 'E_USER_CANCELLED') throw new Error('Purchase cancelled');
             throw err;
         }
     }
@@ -60,14 +95,14 @@ class SubscriptionService {
     async restorePurchases() {
         try {
             console.log('[IAP] Restoring purchases...');
-            const purchases = await RNIAP.getAvailablePurchases();
+            const purchases = await getAvailablePurchases();
             console.log('[IAP] Available purchases:', purchases.length);
 
             let restoredCount = 0;
             for (const purchase of purchases) {
                 const isVerified = await this.verifyWithBackend(purchase);
                 if (isVerified) {
-                    await RNIAP.finishTransaction({ purchase, isConsumable: false });
+                    await finishTransaction({ purchase, isConsumable: false });
                     restoredCount++;
                 }
             }
@@ -79,7 +114,7 @@ class SubscriptionService {
     }
 
     setupPurchaseListeners(onSuccess, onError) {
-        this.purchaseUpdateSubscription = RNIAP.purchaseUpdatedListener(async (purchase) => {
+        this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase) => {
             console.log('[IAP] Purchase updated:', purchase.productId);
             const receipt = purchase.transactionReceipt;
             if (receipt) {
@@ -87,7 +122,7 @@ class SubscriptionService {
                     // Verify with Backend
                     const isVerified = await this.verifyWithBackend(purchase);
                     if (isVerified) {
-                        await RNIAP.finishTransaction({ purchase, isConsumable: false });
+                        await finishTransaction({ purchase, isConsumable: false });
                         console.log('[IAP] Transaction finished successfully');
                         onSuccess && onSuccess(purchase);
                     } else {
@@ -101,9 +136,9 @@ class SubscriptionService {
             }
         });
 
-        this.purchaseErrorSubscription = RNIAP.purchaseErrorListener((error) => {
+        this.purchaseErrorSubscription = purchaseErrorListener((error) => {
             console.warn('[IAP] Purchase Error', error);
-            // Don't show alert for user cancellation (code 2 on Android)
+            // Don't show alert for user cancellation
             if (error?.code !== 'E_USER_CANCELLED') {
                 onError && onError(error.message || 'Purchase failed');
             }
@@ -149,7 +184,7 @@ class SubscriptionService {
     }
 
     async endConnection() {
-        await RNIAP.endConnection();
+        await endConnection();
     }
 }
 

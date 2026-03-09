@@ -15,7 +15,9 @@ const DailyLimitModal = () => {
         telegramLinked,
         checkTelegramStatus,
         user,
-        purchasePremium
+        purchasePremium,
+        isPremium,
+        getPlanPrice
     } = useContext(UserContext);
     const navigation = useNavigation();
     const brand = Constants.BRAND;
@@ -93,7 +95,7 @@ const DailyLimitModal = () => {
 
                                 {/* Google/Apple Pay CTA */}
                                 <TouchableOpacity
-                                    style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 12 }}
+                                    style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 10 }}
                                     onPress={async () => {
                                         const result = await purchasePremium('monthly');
                                         if (result.success) {
@@ -105,12 +107,37 @@ const DailyLimitModal = () => {
                                         }
                                     }}
                                 >
-                                    <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                        Unlock Premium - Monthly
-                                    </Text>
-                                    <Text style={{ color: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', textAlign: 'center', marginTop: 2 }}>
-                                        Check Price in Store
-                                    </Text>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
+                                            Unlock Monthly Premium
+                                        </Text>
+                                        <Text style={{ color: isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600' }}>
+                                            {getPlanPrice('premium_monthly')} / month
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{ backgroundColor: '#FFD700', padding: 16, borderRadius: 12, marginBottom: 12 }}
+                                    onPress={async () => {
+                                        const result = await purchasePremium('yearly');
+                                        if (result.success) {
+                                            setShowLimitModal(false);
+                                        } else {
+                                            if (result.message !== 'Purchase cancelled') {
+                                                Alert.alert('Error', result.message || 'Purchase failed');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={{ color: '#000', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
+                                            Unlock Yearly Premium 👑
+                                        </Text>
+                                        <Text style={{ color: 'rgba(0,0,0,0.5)', fontSize: 12, fontWeight: '700' }}>
+                                            {getPlanPrice('premium_yearly')} / year
+                                        </Text>
+                                    </View>
                                 </TouchableOpacity>
 
                                 {/* Telegram CTA */}

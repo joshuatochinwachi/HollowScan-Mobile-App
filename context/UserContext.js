@@ -26,6 +26,8 @@ export const UserProvider = ({ children }) => {
     const [showLimitModal, setShowLimitModal] = useState(false);
     const [countdown, setCountdown] = useState('');
     const [selectedRegion, setSelectedRegion] = useState('USA Stores');
+    const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+    const [isFetchingPlans, setIsFetchingPlans] = useState(false);
 
 
     const [dailyViews, setDailyViews] = useState({
@@ -46,6 +48,7 @@ export const UserProvider = ({ children }) => {
 
             // --- IAP Initialization ---
             await SubscriptionService.initialize();
+            fetchIAPPlans();
             SubscriptionService.setupPurchaseListeners(
                 async (purchase) => {
                     console.log('[IAP] Purchase verified successfully');
@@ -85,6 +88,38 @@ export const UserProvider = ({ children }) => {
         } catch (error) {
             console.error('[REGION] Error saving region:', error);
         }
+    };
+
+    const fetchIAPPlans = async () => {
+        if (isFetchingPlans) return;
+        setIsFetchingPlans(true);
+        try {
+            console.log('[IAP] Fetching plans via UserContext...');
+            const plans = await SubscriptionService.getSubscriptions();
+            if (plans && plans.length > 0) {
+                setSubscriptionPlans(plans);
+                console.log('[IAP] Plans updated in Context:', plans.length);
+            }
+        } catch (error) {
+            console.error('[IAP] Error fetching plans in context:', error);
+        } finally {
+            setIsFetchingPlans(false);
+        }
+    };
+
+    const getPlanPrice = (sku) => {
+        const plan = subscriptionPlans.find(p => p.productId === sku);
+        if (plan) {
+            // Android uses subscriptionOfferDetails
+            if (plan.subscriptionOfferDetails && plan.subscriptionOfferDetails.length > 0) {
+                const offer = plan.subscriptionOfferDetails[0];
+                if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList.length > 0) {
+                    return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
+                }
+            }
+            return plan.localizedPrice || '...';
+        }
+        return '...';
     };
 
     const loadTheme = async () => {
@@ -634,7 +669,7 @@ export const UserProvider = ({ children }) => {
         const sku = planType === 'yearly' ? 'premium_yearly' : 'premium_monthly';
         try {
             // We pass the user_id to the service so it can be sent to the backend for verification
-            SubscriptionService.currentUserId = user.id;
+            SubscriptionService.setCurrentUserId(user.id);
             await SubscriptionService.requestSubscription(sku);
             return { success: true };
         } catch (error) {
@@ -724,7 +759,9 @@ export const UserProvider = ({ children }) => {
                 selectedRegion,
                 updateRegion,
                 syncPreferences,
-                purchasePremium
+                purchasePremium,
+                subscriptionPlans,
+                getPlanPrice
             }}
         >
 
