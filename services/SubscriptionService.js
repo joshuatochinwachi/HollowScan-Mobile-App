@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import {
     initConnection,
     getSubscriptions,
-    requestPurchase,
+    requestSubscription,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -72,24 +72,14 @@ class SubscriptionService {
                     throw new Error(`Price/Offer not found for ${sku}. Check if the Base Plan is "Activated".`);
                 }
 
-                await requestPurchase({
-                    type: 'subs',
-                    request: {
-                        google: {
-                            skus: [sku],
-                            subscriptionOffers: [{ sku: sku, offerToken }]
-                        }
-                    }
+                await requestSubscription({
+                    sku: sku,
+                    offerToken: offerToken,
                 });
             } else {
                 // iOS
-                await requestPurchase({
-                    type: 'subs',
-                    request: {
-                        apple: {
-                            sku: sku
-                        }
-                    }
+                await requestSubscription({
+                    sku: sku,
                 });
             }
         } catch (err) {
