@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import {
     initConnection,
-    fetchProducts,
+    getSubscriptions,
     requestPurchase,
     finishTransaction,
     purchaseUpdatedListener,
@@ -43,7 +43,7 @@ class SubscriptionService {
     async getSubscriptions() {
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
+            const products = await getSubscriptions({ skus: itemSkus });
             console.log('[IAP] Products found:', products?.length || 0);
             return products || [];
         } catch (err) {
@@ -57,8 +57,8 @@ class SubscriptionService {
             console.log('[IAP] Requesting subscription for:', sku);
 
             if (Platform.OS === 'android') {
-                // For Android (react-native-iap v14+), fetch product first to get the offerToken
-                const products = await fetchProducts({ skus: [sku], type: 'subs' });
+                // Fetch product to get the offerToken
+                const products = await getSubscriptions({ skus: [sku] });
                 const product = products?.find(p => p.productId === sku);
 
                 if (!product) {
@@ -94,7 +94,6 @@ class SubscriptionService {
             }
         } catch (err) {
             console.warn('[IAP] Error requesting subscription', err.code, err.message);
-            // Translate cancellation codes to user-friendly messages
             if (err.code === 'E_USER_CANCELLED') throw new Error('Purchase cancelled');
             throw err;
         }
@@ -127,7 +126,6 @@ class SubscriptionService {
             const receipt = purchase.transactionReceipt;
             if (receipt) {
                 try {
-                    // Verify with Backend
                     const isVerified = await this.verifyWithBackend(purchase);
                     if (isVerified) {
                         await finishTransaction({ purchase, isConsumable: false });
@@ -146,7 +144,6 @@ class SubscriptionService {
 
         this.purchaseErrorSubscription = purchaseErrorListener((error) => {
             console.warn('[IAP] Purchase Error', error);
-            // Don't show alert for user cancellation
             if (error?.code !== 'E_USER_CANCELLED') {
                 onError && onError(error.message || 'Purchase failed');
             }
