@@ -113,9 +113,9 @@ export const UserProvider = ({ children }) => {
         };
         const plan = subscriptionPlans.find(p => p.productId === sku);
         if (plan) {
-            // Android uses subscriptionOfferDetails in v14
-            if (plan.subscriptionOfferDetails && plan.subscriptionOfferDetails.length > 0) {
-                const offer = plan.subscriptionOfferDetails[0];
+            // Android: subscriptionOfferDetailsAndroid is the correct v14 field name
+            if (plan.subscriptionOfferDetailsAndroid && plan.subscriptionOfferDetailsAndroid.length > 0) {
+                const offer = plan.subscriptionOfferDetailsAndroid[0];
                 if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList && offer.pricingPhases.pricingPhaseList.length > 0) {
                     return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
                 }

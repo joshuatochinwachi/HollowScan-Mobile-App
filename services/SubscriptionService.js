@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import {
     initConnection,
-    getSubscriptions,
-    requestSubscription,
+    fetchProducts,
+    requestPurchase,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -40,10 +40,11 @@ class SubscriptionService {
         }
     }
 
+    // Fetches subscription plan details (prices, offer tokens, etc.)
     async getSubscriptions() {
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await getSubscriptions({ skus: itemSkus });
+            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
             console.log('[IAP] Products found:', products?.length || 0);
             return products || [];
         } catch (err) {
@@ -57,29 +58,37 @@ class SubscriptionService {
             console.log('[IAP] Requesting subscription for:', sku);
 
             if (Platform.OS === 'android') {
-                // Fetch product to get the offerToken
-                const products = await getSubscriptions({ skus: [sku] });
+                // Fetch the specific product to get its offerToken
+                const products = await fetchProducts({ skus: [sku], type: 'subs' });
                 const product = products?.find(p => p.productId === sku);
 
                 if (!product) {
                     throw new Error(`Product ${sku} not found. Please ensure it's "Active" in Play Console.`);
                 }
 
-                // Get the first offer token (default base plan)
-                const offerToken = product.subscriptionOfferDetails?.[0]?.offerToken;
+                // offerToken is required for Android subscriptions in v14
+                const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
 
                 if (!offerToken) {
-                    throw new Error(`Price/Offer not found for ${sku}. Check if the Base Plan is "Activated".`);
+                    throw new Error(`Offer token not found for ${sku}. Check the Base Plan is "Activated".`);
                 }
 
-                await requestSubscription({
-                    sku: sku,
-                    subscriptionOffers: [{ sku: sku, offerToken: offerToken }],
+                await requestPurchase({
+                    type: 'subs',
+                    request: {
+                        google: {
+                            skus: [sku],
+                            subscriptionOffers: [{ sku, offerToken }],
+                        },
+                    },
                 });
             } else {
                 // iOS
-                await requestSubscription({
-                    sku: sku,
+                await requestPurchase({
+                    type: 'subs',
+                    request: {
+                        apple: { sku },
+                    },
                 });
             }
         } catch (err) {
@@ -113,8 +122,9 @@ class SubscriptionService {
     setupPurchaseListeners(onSuccess, onError) {
         this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase) => {
             console.log('[IAP] Purchase updated:', purchase.productId);
-            const receipt = purchase.transactionReceipt;
-            if (receipt) {
+            // v14: transactionReceipt does not exist — use purchaseToken instead
+            const token = purchase.purchaseToken;
+            if (token) {
                 try {
                     const isVerified = await this.verifyWithBackend(purchase);
                     if (isVerified) {
