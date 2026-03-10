@@ -44,7 +44,7 @@ export const UserProvider = ({ children }) => {
             await loadDailyViews();
             await loadTheme();
             await loadRegion();
-            setupNotificationHandler(); // Initialize global notification listener
+            setupNotificationHandler();
 
             // --- IAP Initialization ---
             await SubscriptionService.initialize();
@@ -52,7 +52,7 @@ export const UserProvider = ({ children }) => {
             SubscriptionService.setupPurchaseListeners(
                 async (purchase) => {
                     console.log('[IAP] Purchase verified successfully');
-                    await refreshUserStatus(); // Refresh premium status from backend
+                    await refreshUserStatus();
                 },
                 (error) => {
                     console.warn('[IAP] Purchase flow error:', error);
@@ -61,7 +61,6 @@ export const UserProvider = ({ children }) => {
 
             setIsLoading(false);
         };
-
 
         init();
 
@@ -143,19 +142,13 @@ export const UserProvider = ({ children }) => {
             const stored = await AsyncStorage.getItem('user_data');
             if (stored) {
                 const userData = JSON.parse(stored);
-                // Simple validation to ensure it's a valid object with an ID
                 if (userData && userData.id) {
                     setUser(userData);
-                    // Register for push notifications
+                    SubscriptionService.setCurrentUserId(userData.id); // ← FIX: set user ID on app load
                     registerForPushNotifications(userData.id);
-                    // Check telegram status
                     checkTelegramStatus(userData.id);
-                    // Background refresh to catch up if DB state changed (e.g. verified on another device)
-                    // We don't await this so startup is still fast
                     setTimeout(() => refreshUserStatus(userData), 1000);
                 } else {
-
-
                     setUser(null);
                 }
             } else {
@@ -209,7 +202,6 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-
     const verifyCode = async (code) => {
         if (!user?.email || !code) return { success: false, message: 'Email and code required' };
         try {
@@ -220,7 +212,6 @@ export const UserProvider = ({ children }) => {
             });
             const data = await response.json();
             if (data.success) {
-                // Refresh status to update local user object
                 await refreshUserStatus();
             }
             return { success: data.success, message: data.message };
@@ -287,16 +278,13 @@ export const UserProvider = ({ children }) => {
             const response = await fetch(`${Constants.API_BASE_URL}/v1/user/status?user_id=${targetUser.id}`);
             const data = await response.json();
 
-            // RACE CONDITION GUARD: Using live userRef.current
             if (!userRef.current || userRef.current.id !== userIdBeforeFetch) {
                 console.log('[USER] Status refresh ignored: user changed or logged out during fetch');
                 return;
             }
 
-            // Update the user object with new status and verification
-            // Robust mapping to handle both snake_case and camelCase from backend
             const updatedUser = {
-                ...userRef.current, // Use most recent ref as base
+                ...userRef.current,
                 name: data.name || userRef.current.name,
                 bio: data.bio || userRef.current.bio,
                 location: data.location || userRef.current.location,
@@ -309,8 +297,6 @@ export const UserProvider = ({ children }) => {
                 region: data.region || userRef.current?.region
             };
 
-            // SYNC ALERTS STORAGE: If we have notification preferences from the cloud,
-            // ensure the local Alert-specific keys are updated so screens stay in sync.
             if (data.notification_preferences) {
                 try {
                     const prefs = data.notification_preferences;
@@ -355,7 +341,6 @@ export const UserProvider = ({ children }) => {
     const logout = async () => {
         try {
             console.log('[AUTH] Logging out user:', userRef.current?.id);
-            // Unregister push token from backend before logging out
             if (userRef.current?.id) {
                 try {
                     const tokenData = await Notifications.getExpoPushTokenAsync({
@@ -369,14 +354,12 @@ export const UserProvider = ({ children }) => {
                 }
             }
 
-            // IMMEDIATELY clear ref to stop background tasks
             userRef.current = null;
             setUser(null);
             setTelegramLinked(false);
             setIsPremiumTelegram(false);
             setPremiumUntil(null);
 
-            // Clear storage
             await AsyncStorage.removeItem('user_data');
             await AsyncStorage.removeItem('@hollowscan_notifications_enabled');
             await AsyncStorage.removeItem('@hollowscan_subscriptions');
@@ -387,16 +370,12 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-
     const loadDailyViews = async () => {
-
         try {
             const stored = await AsyncStorage.getItem('daily_views');
             if (stored) {
                 const data = JSON.parse(stored);
-                // Check if date needs reset (midnight reset)
                 if (data.date !== new Date().toDateString()) {
-                    // Reset for new day
                     const newData = {
                         date: new Date().toDateString(),
                         products: [],
@@ -407,7 +386,6 @@ export const UserProvider = ({ children }) => {
                     setDailyViews(data);
                 }
             } else {
-                // First time - initialize
                 const newData = {
                     date: new Date().toDateString(),
                     products: [],
@@ -421,15 +399,11 @@ export const UserProvider = ({ children }) => {
     };
 
     const trackProductView = async (productId) => {
-        // 1. Proactive Time-based Check (Client side)
-        // If we know their time is up or they aren't premium, check daily limit
         if (!isPremium) {
-            // Check daily limit for free users
             const remaining = getRemainingViews();
             if (remaining <= 0) {
                 console.log('[LIMIT] Daily limit reached - showing modal');
                 setShowLimitModal(true);
-                // Trigger a background refresh just in case they JUST renewed
                 refreshUserStatus();
                 return { allowed: false, remaining: 0 };
             }
@@ -438,22 +412,18 @@ export const UserProvider = ({ children }) => {
         }
 
         try {
-            // Get current daily views from local storage
             const stored = await AsyncStorage.getItem('daily_views');
             let current = stored ? JSON.parse(stored) : { date: new Date().toDateString(), products: [] };
 
-            // Check if date changed (midnight reset)
             if (current.date !== new Date().toDateString()) {
                 current = { date: new Date().toDateString(), products: [] };
             }
 
-            // If not already in the list, add it
             if (!current.products.includes(productId)) {
                 current.products.push(productId);
                 await AsyncStorage.setItem('daily_views', JSON.stringify(current));
                 setDailyViews(current);
 
-                // Track on server too (for analytics/sync)
                 fetch(`${Constants.API_BASE_URL}/v1/user/views/track`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -461,9 +431,6 @@ export const UserProvider = ({ children }) => {
                 }).catch(e => console.log('[VIEW] Server track error:', e));
             }
 
-            // TRIGGER BACKGROUND STATUS REFRESH
-            // This ensures that if their premium was revoked or expired, 
-            // the state will be updated for the NEXT view action.
             refreshUserStatus();
             checkTelegramStatus().catch(() => { });
 
@@ -473,7 +440,7 @@ export const UserProvider = ({ children }) => {
             };
         } catch (error) {
             console.error('[VIEW] Error tracking view:', error);
-            return { allowed: true }; // Optimistic on error
+            return { allowed: true };
         }
     };
 
@@ -481,7 +448,6 @@ export const UserProvider = ({ children }) => {
         return Math.max(0, FREE_PRODUCT_LIMIT - dailyViews.products.length);
     };
 
-    // TIMER LOGIC FOR MODAL
     useEffect(() => {
         let interval;
         if (showLimitModal) {
@@ -511,7 +477,6 @@ export const UserProvider = ({ children }) => {
         return () => clearInterval(interval);
     }, [showLimitModal]);
 
-
     const linkTelegramAccount = async (code) => {
         if (!user?.id || !code) return { success: false, message: 'Invalid request' };
         try {
@@ -522,7 +487,6 @@ export const UserProvider = ({ children }) => {
             });
             const data = await response.json();
             if (data.success) {
-                // Refresh status
                 checkTelegramStatus(user.id);
             }
             return { success: data.success, message: data.message };
@@ -562,7 +526,6 @@ export const UserProvider = ({ children }) => {
 
         try {
             const url = `${Constants.API_BASE_URL}/v1/user/telegram/link-status?user_id=${idToCheck}`;
-            console.log(`[DEBUG] Fetching TG status from: ${url}`);
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -589,50 +552,34 @@ export const UserProvider = ({ children }) => {
                 setTelegramLinked(true);
                 setIsPremiumTelegram(data.is_premium || false);
                 setPremiumUntil(data.premium_until || null);
-
-                // Sync with main user state too
                 refreshUserStatus();
-
                 return { linked: true, isPremium: data.is_premium };
             } else {
                 setTelegramLinked(false);
                 setIsPremiumTelegram(false);
                 setPremiumUntil(null);
-
-                // Sync with main user state too (e.g. if link was transferred)
                 refreshUserStatus();
-
                 return { linked: false };
             }
         } catch (error) {
             console.error('[TELEGRAM] Status check error:', error);
-            // Default to not-linked on error for safety
             setTelegramLinked(false);
             setIsPremiumTelegram(false);
             setPremiumUntil(null);
-
-            // Try to refresh main user status too
             refreshUserStatus();
-
             return { linked: false, error: error.message };
         }
     };
 
-
     const updateUser = async (userData) => {
         try {
-            if (!userData) {
-                // Use logout for complete cleanup
-                return;
-            }
+            if (!userData) return;
 
             setUser(userData);
             await AsyncStorage.setItem('user_data', JSON.stringify(userData));
 
-            // Register for push notifications if we have a user
             if (userData.id) {
                 registerForPushNotifications(userData.id);
-                // Refresh all statuses for the new user
                 checkTelegramStatus(userData.id);
                 refreshUserStatus(userData);
                 SubscriptionService.setCurrentUserId(userData.id);
@@ -656,7 +603,6 @@ export const UserProvider = ({ children }) => {
             const data = await response.json();
 
             if (data.success) {
-                // Optimistically update local state immediately
                 const updatedUser = { ...user, ...profileData };
                 setUser(updatedUser);
                 await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
@@ -673,7 +619,6 @@ export const UserProvider = ({ children }) => {
         if (!user?.id) return { success: false, message: 'Please login first' };
         const sku = planType === 'yearly' ? 'premium_yearly' : 'premium_monthly';
         try {
-            // We pass the user_id to the service so it can be sent to the backend for verification
             SubscriptionService.setCurrentUserId(user.id);
             await SubscriptionService.requestSubscription(sku);
             return { success: true };
@@ -681,7 +626,6 @@ export const UserProvider = ({ children }) => {
             return { success: false, message: error.message };
         }
     };
-
 
     const resetDailyViews = async () => {
         const newData = {
@@ -702,17 +646,12 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    // Unified getter for isPremium - considers both App DB and Telegram Link
-    // ADDED: Time-based check and Link-status check to ensure revocation
     const isPremium = (() => {
         const now = new Date();
 
-        // 1. Check App-level subscription
-        // If source is telegram, we MUST have telegramLinked = true
         if (user?.isPremium && user?.subscriptionEnd) {
             const isTelegramSource = user?.subscriptionSource === 'telegram';
             if (isTelegramSource && !telegramLinked) {
-                // Ignore this premium status if link is gone and it was the only source
                 console.log('[STRICT] User marked premium via Telegram but not linked - ignoring.');
             } else {
                 const expiry = new Date(user.subscriptionEnd);
@@ -720,7 +659,6 @@ export const UserProvider = ({ children }) => {
             }
         }
 
-        // 2. Check Telegram-level subscription (Local sync state)
         if (isPremiumTelegram && premiumUntil && telegramLinked) {
             const expiry = new Date(premiumUntil);
             if (expiry > now) return true;
@@ -728,7 +666,6 @@ export const UserProvider = ({ children }) => {
 
         return false;
     })();
-
 
     return (
         <UserContext.Provider
@@ -741,7 +678,7 @@ export const UserProvider = ({ children }) => {
                 trackProductView,
                 getRemainingViews,
                 updateUser,
-                updateUserProfile, // New profile update function
+                updateUserProfile,
                 resetDailyViews,
                 isPremium,
                 login,
@@ -769,8 +706,6 @@ export const UserProvider = ({ children }) => {
                 getPlanPrice
             }}
         >
-
-
             {children}
         </UserContext.Provider>
     );
