@@ -74,7 +74,7 @@ class SubscriptionService {
 
                 await requestSubscription({
                     sku: sku,
-                    offerToken: offerToken,
+                    subscriptionOffers: [{ sku: sku, offerToken: offerToken }],
                 });
             } else {
                 // iOS
