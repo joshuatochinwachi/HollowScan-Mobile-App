@@ -1,62 +1,69 @@
-# HollowScan Mobile App - Live on [Google (Android) PlayStore](https://play.google.com/store/apps/details?id=com.kttylabs.app) and Apple (iOS) App Store
+# HollowScan Mobile App - Live on [Google (Android) PlayStore](https://play.google.com/store/apps/details?id=com.kttylabs.app) and [Apple (iOS) App Store](https://apps.apple.com/app/hollowscan)
 
 **HollowScan** is a powerful mobile arbitrage tool that helps users discover underpriced products across multiple regions (US, UK, Canada) for resale profit. Built with React Native and Expo, the app provides real-time deal scanning, Telegram integration, and premium subscription features.
 
 ---
 
-## 📱 Features
+## ✨ Features
 
 ### Core Functionality
-- **Real-Time Deal Scanning**: 24/7 automated scanning across major retailers
-- **Multi-Region Support**: Browse deals from USA, UK, and Canada stores
-- **Product Categories**: Electronics, Fashion, Home & Garden, Sports, Toys, and more
-- **Price Tracking**: Live price updates and "Check on Site" verification
-- **Saved Products**: Bookmark deals for later review
+- **Real-Time Deal Scanning**: 24/7 automated scanning across major retailers.
+- **Multi-Region Support**: Browse deals from USA, UK, and Canada stores.
+- **Product Categories**: Electronics, Fashion, Home & Garden, Sports, Toys, and more.
+- **Price Tracking**: Live price updates and "Check on Site" verification.
+- **Saved Products**: Bookmark deals for later review.
 
 ### Premium Features
-- **Unlimited Access**: Remove daily viewing limits
-- **Priority Alerts**: Get notified of high-value deals first
-- **Telegram Integration**: Sync premium status and receive push notifications via Telegram bot
-- **Cross-Platform Sync**: Premium status syncs between mobile app and Telegram
+- **Unlimited Access**: Remove daily viewing limits.
+- **Priority Alerts**: Get notified of high-value deals first.
+- **Telegram Integration**: Sync premium status and receive push notifications via Telegram bot.
+- **Cross-Platform Sync**: Premium status syncs between mobile app and Telegram.
 
 ### User Experience
-- **Dark/Light Mode**: Fully customizable theme preferences
-- **Profile Customization**: Avatar selection, bio, location
-- **Email Verification**: Secure account management
-- **Deep Linking**: Seamless navigation from external sources
+- **Dark/Light Mode**: Fully customizable theme preferences.
+- **Profile Customization**: Avatar selection and account management.
+- **Email Verification**: Secure account management.
+- **Deep Linking**: Seamless navigation from external sources.
 
 ---
 
 ## 🏗️ Tech Stack
 
 ### Frontend
-- **Framework**: React Native 0.81.5
-- **UI Library**: Expo SDK 54
-- **Navigation**: React Navigation 6.x (Bottom Tabs + Native Stack)
+- **Framework**: React Native (Expo SDK 54)
+- **Navigation**: React Navigation (Bottom Tabs + Native Stack)
 - **State Management**: React Context API
-- **Storage**: AsyncStorage for local persistence
-
-### Key Dependencies
-- `expo-blur`: Glassmorphism effects
-- `expo-linear-gradient`: Premium UI gradients
-- `expo-notifications`: Push notification support
-- `expo-linking`: Deep linking and URL schemes
-- `react-native-gesture-handler`: Smooth interactions
-- `react-native-safe-area-context`: Device-safe layouts
+- **UI Library**: Custom-built with `expo-blur` and `expo-linear-gradient`
 
 ### Backend Integration
-- RESTful API for product data and user management
-- Telegram Bot API for premium sync and notifications
+- **API**: FastAPI (Python) for business logic and data orchestration.
+- **Database**: Supabase (PostgreSQL) for user data and transaction logs.
+- **Intelligence**: Discord Archiver/Scraper for real-time deal ingestion.
 
-Backend (FAST API) Repo ==> [https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend)
+---
 
-Discord Archiver (Scraper) + Flask API + Telegram Bot Repo ==> [https://github.com/joshuatochinwachi/dc_scrape](https://github.com/joshuatochinwachi/dc_scrape)
+## 🛡️ Engineering Excellence & Security
+
+### Architectural Principles
+- **Service-Oriented Logic**: Business logic is decoupled from UI components into dedicated `services/` (e.g., `SubscriptionService`, `LiveProductService`), ensuring high testability.
+- **Centralized State Management**: Optimized use of the **React Context API** to manage authentication and user profiles globally.
+- **Custom Hook Pattern**: Utilizes custom hooks to encapsulate complex device interactions, keeping components clean and declarative.
+
+### Security Standards
+- **Authenticated Proxy Architecture**: Backend requests are proxied via Supabase-style verified headers, preventing direct database exposure.
+- **Secure Persistence**: Sensitive session data is handled with lifecycle-aware state management, with local tokens stored securely via `AsyncStorage`.
+- **Environment Isolation**: Production secrets (API keys, project IDs) are managed via `eas.json` and `.env.local` to ensure Zero-Trust configuration.
+
+### Performance & UI/UX
+- **Dynamic Theming**: First-class support for **System Dark/Light Mode** with smooth transitions.
+- **Optimized List Rendering**: Implementation of `FlatList` optimizations and skeleton loaders to maintain 60FPS.
+- **Premium Aesthetics**: Use of glassmorphism and custom gradients for a high-end feel.
 
 ---
 
 ## 📂 Project Structure
 
-`	ext
+```text
 hollowscan_app/
 ├── android/                         # Android native source and configuration
 │   └── app/
@@ -86,27 +93,24 @@ hollowscan_app/
 │   └── SubscriptionService.js       # IAP controller (verified Fixes 1, 2, 3 applied)
 └── utils/                           # Shared utility functions
     └── format.js                    # Text processing and currency formatting
-`
+```
 
 ### 📚 Key Documentation Guides
-The project maintains high-quality documentation for specific subsystems, located in the root directory:
 - **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)**: Production release and store submission workflow.
 - **[TELEGRAM_INTEGRATION_GUIDE.md](./TELEGRAM_INTEGRATION_GUIDE.md)**: Logic for syncing mobile accounts with the bot.
 - **[ARCHITECTURE_DIAGRAM.md](./ARCHITECTURE_DIAGRAM.md)**: In-depth technical system design.
 - **[DEEP_LINKING_GUIDE.md](./DEEP_LINKING_GUIDE.md)**: Protocol-based application navigation.
-- **[STRUCTURE_GUIDE.md](./STRUCTURE_GUIDE.md)**: Detailed breakdown of the codebase architecture.
 
 ---
 
 ## 💳 Premium Subscription & IAP Architecture
 
-The application implements a robust, cross-platform In-App Purchase (IAP) system integrated with a FastAPI backend and Supabase database. It is designed for maximum reliability with built-in recovery mechanisms.
+The application implements a robust, cross-platform In-App Purchase (IAP) system designed for maximum reliability.
 
 ### 1. High-Level Technical Architecture
-- **In-App Purchase Client**: `react-native-iap` (v14+) for Google Play Billing and Apple App Store.
-- **Backend Verification**: Python (FastAPI) server using `google-api-python-client` for server-side token validation.
-- **Persistence**: Supabase PostgreSQL for transaction history and user status tracking.
-- **2-Way Sync**: Automatic synchronization between the Mobile App and the companion Telegram Bot.
+- **IAP Client**: `react-native-iap` (v14+) for Google Play and Apple App Store.
+- **Backend Verification**: Python (FastAPI) server using `google-api-python-client`.
+- **Persistence**: Supabase for transaction history and user status tracking.
 
 ### 2. Transaction Workflow (Google Play)
 
@@ -137,7 +141,7 @@ sequenceDiagram
 ```
 
 ### 3. Startup Recovery Flow (Fix 3)
-*Handles purchases that were paid for but the app/server crashed before verification.*
+*Handles purchases that were paid for but prevented by network/app crashes.*
 
 ```mermaid
 sequenceDiagram
@@ -162,31 +166,6 @@ sequenceDiagram
     App->>App: Unlock Features
 ```
 
-### 4. Reliability & Recovery Logic
-To ensure users never lose a purchase they paid for, the system implements:
-- **Startup Recovery Sync**: On every app launch, `getAvailablePurchases()` is called to catch any "zombie" transactions that were paid but never verified (e.g., due to a crash or internet loss).
-- **Graceful Error Handling**: Fallback mechanisms to recover the User ID from `AsyncStorage` if the IAP listener fires before the profile data is fully loaded into memory.
-- **Authenticated Proxy Headers**: All verification requests are protected by Supabase-style `apikey` and `Authorization` headers to prevent unauthorized access.
-
----
-
-## 🛡️ Engineering Excellence & Security
-
-### Architectural Principles
-- **Service-Oriented Logic**: Business logic is decoupled from UI components into dedicated services/ (e.g., SubscriptionService, LiveProductService), ensuring high testability and separation of concerns.
-- **Centralized State Management**: Optimized use of the **React Context API** to manage authentication and user profiles globally, reducing prop-drilling.
-- **Custom Hook Pattern**: Utilizes custom hooks to encapsulate complex device interactions (notifications, IAP listeners), keeping components clean and declarative.
-
-### Security Standards
-- **Authenticated Proxy Architecture**: Backend requests are proxied via Supabase-style verified headers, preventing direct database exposure.
-- **Secure Persistence**: Sensitive session data is handled with lifecycle-aware state management, with local tokens stored securely via AsyncStorage.
-- **Environment Isolation**: Production secrets (API keys, project IDs) are managed via eas.json and .env.local to ensure Zero-Trust configuration in version control.
-
-### Performance & UI/UX
-- **Dynamic Theming**: First-class support for **System Dark/Light Mode** with smooth transitions using high-performance animation libraries.
-- **Optimized List Rendering**: Implementation of FlatList optimizations and skeleton loaders to maintain 60FPS during heavy product discovery scans.
-- **Glassmorphism Design**: Use of expo-blur and custom linear gradients for a premium, modern aesthetic.
-
 ---
 
 ## 🚀 Getting Started
@@ -194,153 +173,22 @@ To ensure users never lose a purchase they paid for, the system implements:
 ### Prerequisites
 - Node.js 16+ and npm
 - Expo CLI: `npm install -g expo-cli`
-- Expo Go app on your mobile device (for testing)
 
 ### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd hollowscan_app
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npx expo start
-   ```
-
-4. **Run on device**
-   - Scan the QR code with Expo Go (Android) or Camera app (iOS)
-   - Or press `a` for Android emulator, `i` for iOS simulator
-
----
-
-## 🔧 Configuration
-
-### Environment Setup
-Update `Constants.js` with your backend API URLs and configuration:
-
-```javascript
-export default {
-  API_BASE_URL: 'https://your-api.com',
-  SUPPORT_EMAIL: 'support@hollowscan.com',
-  BRAND: {
-    BLUE: '#4F46E5',
-    DARK_BG: '#0A0A0B',
-    // ... other brand colors
-  }
-};
-```
-
-### App Configuration
-Key settings in `app.json`:
-- **Bundle Identifier (iOS)**: `com.kttylabs.app`
-- **Package Name (Android)**: `com.kttylabs.app`
-- **App Name**: HollowScan
-- **Version**: 1.0.0
+1. `git clone <repository-url>`
+2. `cd hollowscan_app`
+3. `npm install`
+4. `npx expo start`
 
 ---
 
 ## 📦 Deployment
 
-See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for comprehensive instructions on:
-- Building for iOS and Android from Windows PC
-- Creating Apple Developer and Google Play accounts
-- Submitting to App Store and Google Play Store
-- Updating the app after deployment
-
-### Quick Deploy Commands
-
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for full instructions:
 ```bash
-# Build for production
+# Production building
 eas build --platform all --profile production
-
-# Submit to stores
-eas submit -p android
-eas submit -p ios
 ```
-
----
-
-## 🔐 Authentication Flow
-
-1. **Sign Up**: Email + Password registration
-2. **Email Verification**: Required for full access
-3. **Login**: Persistent session with AsyncStorage
-4. **Password Reset**: Email-based recovery
-5. **Telegram Linking**: Optional premium sync
-
----
-
-## 💎 Premium System
-
-### Subscription Tiers
-- **Free**: Daily limit on product views
-- **Premium**: Unlimited access, priority alerts, Telegram integration
-
-### Premium Activation
-- In-app purchase (Google Pay - coming soon)
-- Telegram Bot subscription (active)
-- Premium status syncs across platforms
-
----
-
-## 📱 Deep Linking
-
-The app supports deep linking for:
-- Product details: `hollowscan://product/:productId`
-- Telegram account linking: `hollowscan://link?code=XYZ`
-- Navigation: `hollowscan://home`, `hollowscan://saved`, etc.
-
----
-
-## 🧪 Testing
-
-### Local Testing
-```bash
-npx expo start
-```
-
-### Building Versions
-```bash
-# Production build
-eas build --platform android --profile production  # Android (AAB)
-eas build --platform ios --profile production      # iOS
-eas build --platform all --profile production      # Both
-
-# Preview build (APK for testing)
-eas build --platform android --profile preview
-```
-
----
-
-## 📄 Documentation
-
-Additional documentation available in the repository:
-- `DEPLOYMENT_GUIDE.md` - Complete deployment workflow
-- `TELEGRAM_INTEGRATION_GUIDE.md` - Telegram bot setup
-- `DEEP_LINKING_GUIDE.md` - Deep linking implementation
-- `ARCHITECTURE_DIAGRAM.md` - System architecture overview
-- `STRUCTURE_GUIDE.md` - Detailed code structure
-
----
-
-## 🤝 Support
-
-For issues, questions, or feedback:
-- **Email**: support@hollowscan.com
-- **In-App**: Profile → Contact Support
-
----
-
-## 📝 License
-
-Proprietary - All rights reserved
 
 ---
 
