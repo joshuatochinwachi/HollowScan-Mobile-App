@@ -91,8 +91,12 @@ async def verify_subscription(purchase_token: str, product_id: str):
             return False, None, f"Status: {payment_state or 'Unknown'}"
             
     except HttpError as e:
-        error_details = json.loads(e.content.decode('utf-8'))
-        message = error_details.get('error', {}).get('message', 'Unknown API Error')
+        try:
+            error_details = json.loads(e.content.decode('utf-8'))
+            print(f"[GOOGLE] Full Error: {json.dumps(error_details, indent=2)}")
+            message = error_details.get('error', {}).get('message', 'Unknown API Error')
+        except:
+            message = str(e)
         print(f"[GOOGLE] Verification failed: {message}")
         return False, None, message
     except Exception as e:
