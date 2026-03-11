@@ -55,6 +55,7 @@ def get_google_play_service():
             
         scopes = ['https://www.googleapis.com/auth/androidpublisher']
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
+        print(f"[GOOGLE] Service Account Email: {info.get('client_email')}")
         return build('androidpublisher', 'v3', credentials=creds)
     except Exception as e:
         print(f"[GOOGLE] Error parsing service account JSON: {e}")
