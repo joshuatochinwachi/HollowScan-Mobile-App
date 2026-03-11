@@ -314,7 +314,7 @@ const ProfileScreen = () => {
                         <View style={styles.daysLeftContainer}>
                             <Text style={styles.daysLeftText}>
                                 {(() => {
-                                    const end = new Date(premiumUntil || user?.subscription_end);
+                                    const end = new Date(premiumUntil || user?.subscriptionEnd || user?.subscription_end);
                                     const now = new Date();
                                     const diffTime = Math.abs(end - now);
                                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

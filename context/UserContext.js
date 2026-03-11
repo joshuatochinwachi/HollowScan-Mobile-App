@@ -463,6 +463,7 @@ export const UserProvider = ({ children }) => {
     };
 
     const getRemainingViews = () => {
+        if (isPremium) return '∞';
         return Math.max(0, FREE_PRODUCT_LIMIT - dailyViews.products.length);
     };
 

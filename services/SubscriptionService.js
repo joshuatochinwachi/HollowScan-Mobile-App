@@ -135,8 +135,8 @@ class SubscriptionService {
 
             let restoredCount = 0;
             for (const purchase of purchases) {
-                const isVerified = await this.verifyWithBackend(purchase);
-                if (isVerified) {
+            const isVerified = await this.verifyWithBackend(purchase);
+                if (isVerified && isVerified.success) {
                     await finishTransaction({ purchase, isConsumable: false });
                     restoredCount++;
                 }
@@ -156,7 +156,7 @@ class SubscriptionService {
             if (token) {
                 try {
                     const verificationResponse = await this.verifyWithBackend(purchase);
-                    if (verificationResponse.success) {
+                    if (verificationResponse && verificationResponse.success) {
                         await finishTransaction({ purchase, isConsumable: false });
                         console.log('[IAP] Transaction finished successfully');
                         onSuccess && onSuccess(purchase, verificationResponse);
@@ -199,7 +199,7 @@ class SubscriptionService {
 
         if (!this.currentUserId) {
             console.error('[IAP] Verification aborted: No user_id available');
-            return false;
+            return { success: false, message: 'No user ID' };
         }
 
         try {
@@ -223,7 +223,7 @@ class SubscriptionService {
             return data;
         } catch (err) {
             console.error('[IAP] Backend verification error', err);
-            return false;
+            return { success: false, message: err.message };
         }
     }
 
