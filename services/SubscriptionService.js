@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     initConnection,
     fetchProducts,
@@ -179,8 +180,25 @@ class SubscriptionService {
     }
 
     async verifyWithBackend(purchase) {
+        // --- FIX 2: User ID Race Condition Guard ---
         if (!this.currentUserId) {
-            console.error('[IAP] Cannot verify: currentUserId is null');
+            console.log('[IAP] currentUserId null, attempting AsyncStorage recovery...');
+            try {
+                const stored = await AsyncStorage.getItem('user_data');
+                if (stored) {
+                    const userData = JSON.parse(stored);
+                    if (userData && userData.id) {
+                        this.currentUserId = userData.id;
+                        console.log('[IAP] Recovered user_id from AsyncStorage:', this.currentUserId);
+                    }
+                }
+            } catch (e) {
+                console.error('[IAP] User ID recovery failed:', e);
+            }
+        }
+
+        if (!this.currentUserId) {
+            console.error('[IAP] Verification aborted: No user_id available');
             return false;
         }
 
@@ -188,7 +206,11 @@ class SubscriptionService {
             console.log('[IAP] Verifying with backend for user:', this.currentUserId);
             const response = await fetch(`${API_BASE_URL}/v1/auth/google-play/verify`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.EXPO_PUBLIC_SUPABASE_KEY,
+                    'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_KEY}`
+                },
                 body: JSON.stringify({
                     user_id: this.currentUserId,
                     purchase_token: purchase.purchaseToken,

@@ -48,6 +48,16 @@ export const UserProvider = ({ children }) => {
 
             // --- IAP Initialization ---
             await SubscriptionService.initialize();
+
+            // --- FIX 3: Startup Purchase Recovery ---
+            // This catches any unacknowledged purchases from a previous session
+            try {
+                console.log('[IAP] Running startup recovery check...');
+                await SubscriptionService.restorePurchases();
+            } catch (recoveryErr) {
+                console.warn('[IAP] Startup recovery failed:', recoveryErr);
+            }
+
             await fetchIAPPlans();
             SubscriptionService.setupPurchaseListeners(
                 async (purchase) => {
