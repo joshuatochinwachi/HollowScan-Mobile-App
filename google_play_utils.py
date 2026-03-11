@@ -27,6 +27,11 @@ def get_google_play_service():
     try:
         # Load JSON from string
         info = json.loads(service_account_info)
+        
+        # FIX: Ensure private_key has actual newlines (Railway/Docker often escape them)
+        if "private_key" in info and isinstance(info["private_key"], str):
+            info["private_key"] = info["private_key"].replace("\\n", "\n")
+            
         scopes = ['https://www.googleapis.com/auth/androidpublisher']
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
         return build('androidpublisher', 'v3', credentials=creds)
