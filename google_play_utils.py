@@ -31,18 +31,27 @@ def get_google_play_service():
         # Aggressive cleaning for the private key
         if "private_key" in info and isinstance(info["private_key"], str):
             key = info["private_key"].strip()
-            # Handle literal backslash-n sequences (common in env vars)
+            # Handle literal backslash-n sequences
             key = key.replace("\\n", "\n")
-            # Remove any accidentally added extra quotes
-            if key.startswith('"') and key.endswith('"'):
-                key = key[1:-1].replace("\\n", "\n")
+            
+            # REMOVE all whitespace/newlines from the actual Base64 body
+            # but keep the headers/footers
+            header = "-----BEGIN PRIVATE KEY-----"
+            footer = "-----END PRIVATE KEY-----"
+            
+            if header in key and footer in key:
+                # Extract the body, remove all spaces/newlines, then re-wrap at 64 chars
+                body = key.replace(header, "").replace(footer, "").replace("\n", "").replace(" ", "").replace("\r", "").strip()
+                # Re-wrap the body every 64 characters
+                wrapped_body = "\n".join([body[i:i+64] for i in range(0, len(body), 64)])
+                # Reconstruct the perfect PEM key
+                key = f"{header}\n{wrapped_body}\n{footer}\n"
             
             info["private_key"] = key
             
-            # Detailed diagnostics for spotting hidden characters
-            start_snippet = key[:30].replace("\n", "[N]")
-            end_snippet = key[-30:].replace("\n", "[N]")
-            print(f"[GOOGLE] Key Status: Length={len(key)}, Start='{start_snippet}', End='{end_snippet}'")
+            # Diagnostics: Count real newlines to confirm wrapping worked
+            nl_count = key.count("\n")
+            print(f"[GOOGLE] Key Fixed: Length={len(key)}, Newlines={nl_count}, StartsOk={key.startswith(header)}")
             
         scopes = ['https://www.googleapis.com/auth/androidpublisher']
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
