@@ -60,9 +60,10 @@ export const UserProvider = ({ children }) => {
 
             await fetchIAPPlans();
             SubscriptionService.setupPurchaseListeners(
-                async (purchase) => {
+                async (purchase, verificationData) => {
                     console.log('[IAP] Purchase verified successfully');
-                    await refreshUserStatus();
+                    // Inject the verification response directly to update state instantly
+                    await refreshUserStatus(null, verificationData);
                 },
                 (error) => {
                     console.warn('[IAP] Purchase flow error:', error);
@@ -279,16 +280,22 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const refreshUserStatus = async (passedUser = null) => {
+    const refreshUserStatus = async (passedUser = null, injectedData = null) => {
         const targetUser = passedUser || userRef.current;
-        if (!targetUser?.id) return;
+        if (!targetUser?.id && !injectedData) return;
 
         try {
-            const userIdBeforeFetch = targetUser.id;
-            const response = await fetch(`${Constants.API_BASE_URL}/v1/user/status?user_id=${targetUser.id}`);
-            const data = await response.json();
+            const userIdBeforeFetch = targetUser?.id;
+            let data = injectedData;
+            
+            if (!data) {
+                const response = await fetch(`${Constants.API_BASE_URL}/v1/user/status?user_id=${targetUser.id}`);
+                data = await response.json();
+            } else {
+                console.log('[USER] Using injected verification data for instant sync');
+            }
 
-            if (!userRef.current || userRef.current.id !== userIdBeforeFetch) {
+            if (!userRef.current || (userIdBeforeFetch && userRef.current.id !== userIdBeforeFetch)) {
                 console.log('[USER] Status refresh ignored: user changed or logged out during fetch');
                 return;
             }
@@ -303,6 +310,7 @@ export const UserProvider = ({ children }) => {
                 email_verified: data.email_verified !== undefined ? data.email_verified : (data.is_verified !== undefined ? data.is_verified : userRef.current?.email_verified),
                 subscription_status: data.status !== undefined ? data.status : (data.subscription_status !== undefined ? data.subscription_status : userRef.current?.subscription_status),
                 subscription_end: data.subscription_end !== undefined ? data.subscription_end : (data.subscriptionEnd !== undefined ? data.subscriptionEnd : userRef.current?.subscription_end),
+                subscriptionEnd: data.subscription_end !== undefined ? data.subscription_end : (data.subscriptionEnd !== undefined ? data.subscriptionEnd : userRef.current?.subscriptionEnd), // FIX: Sync camelCase
                 notification_preferences: data.notification_preferences || userRef.current?.notification_preferences,
                 region: data.region || userRef.current?.region
             };
@@ -659,12 +667,14 @@ export const UserProvider = ({ children }) => {
     const isPremium = (() => {
         const now = new Date();
 
-        if (user?.isPremium && user?.subscriptionEnd) {
+        // Check user object (both naming conventions)
+        const expiryDate = user?.subscriptionEnd || user?.subscription_end;
+        if (user?.isPremium && expiryDate) {
             const isTelegramSource = user?.subscriptionSource === 'telegram';
             if (isTelegramSource && !telegramLinked) {
                 console.log('[STRICT] User marked premium via Telegram but not linked - ignoring.');
             } else {
-                const expiry = new Date(user.subscriptionEnd);
+                const expiry = new Date(expiryDate);
                 if (expiry > now) return true;
             }
         }

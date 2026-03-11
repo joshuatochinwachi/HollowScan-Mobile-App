@@ -155,11 +155,11 @@ class SubscriptionService {
             const token = purchase.purchaseToken;
             if (token) {
                 try {
-                    const isVerified = await this.verifyWithBackend(purchase);
-                    if (isVerified) {
+                    const verificationResponse = await this.verifyWithBackend(purchase);
+                    if (verificationResponse.success) {
                         await finishTransaction({ purchase, isConsumable: false });
                         console.log('[IAP] Transaction finished successfully');
-                        onSuccess && onSuccess(purchase);
+                        onSuccess && onSuccess(purchase, verificationResponse);
                     } else {
                         console.warn('[IAP] Verification failed for:', purchase.productId);
                         onError && onError('Verification failed');
@@ -220,7 +220,7 @@ class SubscriptionService {
 
             const data = await response.json();
             console.log('[IAP] Backend verification result:', data.success);
-            return data.success;
+            return data;
         } catch (err) {
             console.error('[IAP] Backend verification error', err);
             return false;
