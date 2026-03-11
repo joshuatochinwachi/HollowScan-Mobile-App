@@ -48,7 +48,7 @@ export const UserProvider = ({ children }) => {
 
             // --- IAP Initialization ---
             await SubscriptionService.initialize();
-            fetchIAPPlans();
+            await fetchIAPPlans();
             SubscriptionService.setupPurchaseListeners(
                 async (purchase) => {
                     console.log('[IAP] Purchase verified successfully');
@@ -111,7 +111,7 @@ export const UserProvider = ({ children }) => {
             premium_monthly: '£4.99',
             premium_yearly: '£55.50',
         };
-        const plan = subscriptionPlans.find(p => p.productId === sku);
+        const plan = subscriptionPlans.find(p => p.id === sku);
         if (plan) {
             // Android: subscriptionOfferDetailsAndroid is the correct v14 field name
             if (plan.subscriptionOfferDetailsAndroid && plan.subscriptionOfferDetailsAndroid.length > 0) {

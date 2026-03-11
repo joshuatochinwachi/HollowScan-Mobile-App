@@ -24,6 +24,7 @@ class SubscriptionService {
         this.purchaseUpdateSubscription = null;
         this.purchaseErrorSubscription = null;
         this.currentUserId = null;
+        this.isConnected = false;
     }
 
     setCurrentUserId(userId) {
@@ -33,19 +34,32 @@ class SubscriptionService {
 
     async initialize() {
         try {
+            console.log('[IAP] Initializing connection...');
             const result = await initConnection();
-            console.log('[IAP] Connection initialized:', result);
+            this.isConnected = true;
+            console.log('[IAP] Connection initialized successfully:', result);
         } catch (err) {
-            console.warn('[IAP] Connection error', err.code, err.message);
+            this.isConnected = false;
+            console.warn('[IAP] Connection error:', err.code, err.message);
         }
     }
 
     // Fetches subscription plan details (prices, offer tokens, etc.)
     async getSubscriptions() {
+        if (!this.isConnected) {
+            console.warn('[IAP] Cannot fetch: Connection not initialized.');
+            return [];
+        }
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
             const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
-            console.log('[IAP] Products found:', products?.length || 0);
+            
+            if (!products || products.length === 0) {
+                console.warn('[IAP] No products returned from Google Play. Possible causes: SKUs mismatch, Inactive Base Plan, or Regional restriction.');
+            } else {
+                console.log('[IAP] Successfully found products:', products.length);
+            }
+            
             return products || [];
         } catch (err) {
             console.warn('[IAP] Error fetching subscriptions', err);
@@ -54,23 +68,37 @@ class SubscriptionService {
     }
 
     async requestSubscription(sku) {
+        if (!this.isConnected) {
+            throw new Error('IAP Connection not initialized. Please try again in safe mode.');
+        }
         try {
             console.log('[IAP] Requesting subscription for:', sku);
 
             if (Platform.OS === 'android') {
                 // Fetch the specific product to get its offerToken
                 const products = await fetchProducts({ skus: [sku], type: 'subs' });
-                const product = products?.find(p => p.productId === sku);
+                console.log(`[IAP] Products returned for ${sku}:`, products?.length || 0);
+                
+                if (products?.length > 0) {
+                    products.forEach(p => console.log(`[IAP] Found Product: ${p.id}, type: ${p.type}`));
+                }
+
+                const product = products?.find(p => p.id === sku);
 
                 if (!product) {
-                    throw new Error(`Product ${sku} not found. Please ensure it's "Active" in Play Console.`);
+                    console.error(`[IAP] CRITICAL: Product ${sku} not found in Google Play.`);
+                    throw new Error(`Product "${sku}" not found. Possible causes:
+1. Product ID mismatch (check Play Console)
+2. Base Plan not "Activated"
+3. Account region mismatch
+4. App not uploaded to a track (internal/alpha/beta)`);
                 }
 
                 // offerToken is required for Android subscriptions in v14
                 const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
 
                 if (!offerToken) {
-                    throw new Error(`Offer token not found for ${sku}. Check the Base Plan is "Activated".`);
+                    throw new Error(`Offer token not found for ${sku}. Ensure you have an "Activated" Base Plan in the Play Console.`);
                 }
 
                 await requestPurchase({
