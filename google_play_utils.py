@@ -102,3 +102,33 @@ async def verify_subscription(purchase_token: str, product_id: str):
     except Exception as e:
         print(f"[GOOGLE] Unexpected error: {e}")
         return False, None, str(e)
+
+async def acknowledge_subscription(purchase_token: str, product_id: str):
+    """
+    Acknowledges a subscription purchase. 
+    Crucial: Without acknowledgment, Google refunds the purchase after a few minutes.
+    """
+    service = get_google_play_service()
+    if not service:
+        return False, "Service Account configuration error"
+
+    try:
+        service.purchases().subscriptions().acknowledge(
+            packageName=PACKAGE_NAME,
+            subscriptionId=product_id,
+            token=purchase_token,
+            body={}
+        ).execute()
+        print(f"[GOOGLE] Acknowledged purchase: {product_id}")
+        return True, "Success"
+    except HttpError as e:
+        try:
+            error_details = json.loads(e.content.decode('utf-8'))
+            message = error_details.get('error', {}).get('message', 'Acknowledgment failed')
+        except:
+            message = str(e)
+        print(f"[GOOGLE] Acknowledgment failed: {message}")
+        return False, message
+    except Exception as e:
+        print(f"[GOOGLE] Unexpected acknowledgment error: {e}")
+        return False, str(e)
