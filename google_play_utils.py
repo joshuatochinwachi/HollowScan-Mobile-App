@@ -28,9 +28,19 @@ def get_google_play_service():
         # Load JSON from string
         info = json.loads(service_account_info)
         
-        # FIX: Ensure private_key has actual newlines (Railway/Docker often escape them)
+        # Aggressive cleaning for the private key
         if "private_key" in info and isinstance(info["private_key"], str):
-            info["private_key"] = info["private_key"].replace("\\n", "\n")
+            key = info["private_key"].strip()
+            # Handle literal backslash-n sequences (common in env vars)
+            key = key.replace("\\n", "\n")
+            # Remove any accidentally added extra quotes
+            if key.startswith('"') and key.endswith('"'):
+                key = key[1:-1].replace("\\n", "\n")
+            
+            info["private_key"] = key
+            
+            # Safe logging for diagnostics
+            print(f"[GOOGLE] Private key status: Length={len(key)}, StartsWithBEGIN={key.startswith('-----BEGIN PRIVATE KEY-----')}")
             
         scopes = ['https://www.googleapis.com/auth/androidpublisher']
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
