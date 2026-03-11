@@ -39,8 +39,10 @@ def get_google_play_service():
             
             info["private_key"] = key
             
-            # Safe logging for diagnostics
-            print(f"[GOOGLE] Private key status: Length={len(key)}, StartsWithBEGIN={key.startswith('-----BEGIN PRIVATE KEY-----')}")
+            # Detailed diagnostics for spotting hidden characters
+            start_snippet = key[:30].replace("\n", "[N]")
+            end_snippet = key[-30:].replace("\n", "[N]")
+            print(f"[GOOGLE] Key Status: Length={len(key)}, Start='{start_snippet}', End='{end_snippet}'")
             
         scopes = ['https://www.googleapis.com/auth/androidpublisher']
         creds = service_account.Credentials.from_service_account_info(info, scopes=scopes)
