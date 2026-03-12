@@ -34,9 +34,18 @@ jobs:
       - name: Build Android AAB
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile production --local --non-interactive
+        run: |
+          eas build --platform android --profile production --local --non-interactive > build_log.txt 2>&1 || true
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build_log.txt
 
       - name: Upload Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: android-build
