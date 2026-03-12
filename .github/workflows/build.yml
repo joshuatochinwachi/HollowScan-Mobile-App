@@ -35,14 +35,7 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          eas build --platform android --profile production --local --non-interactive > build_log.txt 2>&1 || true
-
-      - name: Upload Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: build_log.txt
+          eas build --platform android --profile production --local --non-interactive > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
 
       - name: Upload Artifact
         if: success()
