@@ -12,8 +12,11 @@ import {
     Modal,
     TextInput,
     ImageBackground,
-    Linking
+    Linking,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
+
 import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -23,6 +26,46 @@ import { UserContext } from '../context/UserContext';
 import InfoModal from '../components/InfoModal';
 
 const { width } = Dimensions.get('window');
+
+// --- STABLE EXTERNAL COMPONENTS (defined outside to prevent remount on every render) ---
+const SettingRow = ({ icon, label, value, onPress, status, isDestructive, colors }) => (
+    <TouchableOpacity style={styles.settingRow} onPress={onPress}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ marginRight: 15, fontSize: 18, width: 25, textAlign: 'center', color: colors.text }}>{icon}</Text>
+            <View>
+                <Text style={[styles.settingLabel, { color: isDestructive ? '#EF4444' : colors.text }]}>{label}</Text>
+                {status && <Text style={[styles.statusText, { color: colors.textSecondary }]}>{status}</Text>}
+            </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {value && <Text style={[styles.settingValue, { color: colors.textSecondary }]}>{value}</Text>}
+            {onPress && <Text style={{ color: colors.textSecondary, fontSize: 16, marginLeft: 10 }}>›</Text>}
+        </View>
+    </TouchableOpacity>
+);
+
+const SettingRowWithSwitch = ({ icon, label, value, onValueChange, colors, brand }) => (
+    <View style={styles.settingRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ marginRight: 15, fontSize: 18, width: 25, textAlign: 'center', color: colors.text }}>{icon}</Text>
+            <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
+        </View>
+        <Switch
+            trackColor={{ false: '#767577', true: brand.BLUE }}
+            thumbColor={'#f4f3f4'}
+            ios_backgroundColor="#3e3e3e"
+            onValueChange={onValueChange}
+            value={value}
+        />
+    </View>
+);
+
+const SectionHeader = ({ title, colors }) => (
+    <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+    </View>
+);
+// --- END STABLE EXTERNAL COMPONENTS ---
 
 const ProfileScreen = () => {
     const navigation = useNavigation();
@@ -64,15 +107,15 @@ const ProfileScreen = () => {
     const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar_url || null);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Sync edit fields when user data loads/changes
+    // Sync edit fields ONLY when the modal first opens (not on every background user refresh)
     useEffect(() => {
-        if (user) {
+        if (editModalVisible && user) {
             setEditName(user.name || '');
             setEditBio(user.bio || '');
             setEditLocation(user.location || '');
             setSelectedAvatar(user.avatar_url || null);
         }
-    }, [user]);
+    }, [editModalVisible]);
 
     // AVATAR PRESETS (DiceBear)
     const avatarPresets = [
@@ -226,43 +269,7 @@ const ProfileScreen = () => {
     };
 
 
-    const SettingRow = ({ icon, label, value, onPress, status, isDestructive }) => (
-        <TouchableOpacity style={styles.settingRow} onPress={onPress}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 15, fontSize: 18, width: 25, textAlign: 'center', color: colors.text }}>{icon}</Text>
-                <View>
-                    <Text style={[styles.settingLabel, { color: isDestructive ? '#EF4444' : colors.text }]}>{label}</Text>
-                    {status && <Text style={[styles.statusText, { color: colors.textSecondary }]}>{status}</Text>}
-                </View>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {value && <Text style={[styles.settingValue, { color: colors.textSecondary }]}>{value}</Text>}
-                {onPress && <Text style={{ color: colors.textSecondary, fontSize: 16, marginLeft: 10 }}>›</Text>}
-            </View>
-        </TouchableOpacity>
-    );
 
-    const SettingRowWithSwitch = ({ icon, label, value, onValueChange }) => (
-        <View style={styles.settingRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ marginRight: 15, fontSize: 18, width: 25, textAlign: 'center', color: colors.text }}>{icon}</Text>
-                <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
-            </View>
-            <Switch
-                trackColor={{ false: '#767577', true: brand.BLUE }}
-                thumbColor={'#f4f3f4'}
-                ios_backgroundColor="#3e3e3e"
-                onValueChange={onValueChange}
-                value={value}
-            />
-        </View>
-    );
-
-    const SectionHeader = ({ title }) => (
-        <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
-        </View>
-    );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
@@ -408,7 +415,7 @@ const ProfileScreen = () => {
                 </ImageBackground>
 
                 {/* NOTIFICATION & PREFERENCES */}
-                <SectionHeader title="SETTINGS" />
+                <SectionHeader title="SETTINGS" colors={colors} />
                 <View style={[styles.group, { backgroundColor: colors.groupBg, borderColor: colors.border }]}>
 
                     <SettingRowWithSwitch
@@ -416,6 +423,8 @@ const ProfileScreen = () => {
                         label="Dark Mode"
                         value={isDarkMode}
                         onValueChange={toggleTheme}
+                        colors={colors}
+                        brand={brand}
                     />
                     <SettingRow
                         icon="🌍"
@@ -423,27 +432,31 @@ const ProfileScreen = () => {
                         value={selectedRegion === 'USA Stores' ? 'US' : selectedRegion === 'UK Stores' ? 'UK' : 'CA'}
                         status="Region for deals"
                         onPress={() => setCountryModalVisible(true)}
+                        colors={colors}
                     />
                 </View>
 
                 {/* ACCOUNT SECTION */}
-                <SectionHeader title="ACCOUNT" />
+                <SectionHeader title="ACCOUNT" colors={colors} />
                 <View style={[styles.group, { backgroundColor: colors.groupBg, borderColor: colors.border }]}>
                     <SettingRow
                         icon="👤"
                         label="Profile Information"
                         onPress={() => setEditModalVisible(true)}
+                        colors={colors}
                     />
                     <SettingRow
                         icon="🔐"
                         label="Change Password"
                         onPress={() => navigation.navigate('ChangePassword')}
+                        colors={colors}
                     />
                     <SettingRow
                         icon="✉️"
                         label="Email Verification"
                         value={user?.email_verified ? "Verified" : "Not Verified"}
                         status={user?.email_verified ? "Your email is verified" : "Verify to unlock features"}
+                        colors={colors}
                     />
                     <SettingRow
                         icon="🗑️"
@@ -451,11 +464,12 @@ const ProfileScreen = () => {
                         status="Permanently remove your account"
                         onPress={handleDeleteAccount}
                         isDestructive={true}
+                        colors={colors}
                     />
                 </View>
 
                 {/* INTEGRATIONS */}
-                <SectionHeader title="INTEGRATIONS" />
+                <SectionHeader title="INTEGRATIONS" colors={colors} />
                 <View style={[styles.group, { backgroundColor: colors.groupBg, borderColor: colors.border }]}>
                     <SettingRow
                         icon="📱"
@@ -467,37 +481,42 @@ const ProfileScreen = () => {
                                 : 'Link to sync Premium status'
                         }
                         onPress={() => navigation.navigate('TelegramLink')}
+                        colors={colors}
                     />
                 </View>
 
                 {/* SUPPORT SECTION */}
-                <SectionHeader title="SUPPORT" />
+                <SectionHeader title="SUPPORT" colors={colors} />
                 <View style={[styles.group, { backgroundColor: colors.groupBg, borderColor: colors.border }]}>
                     <SettingRow
                         icon="❓"
                         label="Help & FAQ"
                         onPress={() => openInfoModal('Help & FAQ', faqContent)}
+                        colors={colors}
                     />
                     <SettingRow
                         icon="🎧"
                         label="Contact Support"
                         status={Constants.SUPPORT_EMAIL}
                         onPress={openSupport}
+                        colors={colors}
                     />
                 </View>
 
                 {/* LEGAL SECTION */}
-                <SectionHeader title="LEGAL" />
+                <SectionHeader title="LEGAL" colors={colors} />
                 <View style={[styles.group, { backgroundColor: colors.groupBg, borderColor: colors.border }]}>
                     <SettingRow
                         icon="📜"
                         label="Terms of Service"
                         onPress={() => openInfoModal('Terms of Service', tosContent)}
+                        colors={colors}
                     />
                     <SettingRow
                         icon="🔒"
                         label="Privacy Policy"
                         onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
+                        colors={colors}
                     />
                 </View>
 
@@ -567,78 +586,83 @@ const ProfileScreen = () => {
 
 
             {/* EDIT PROFILE MODAL */}
-            < Modal
+            <Modal
                 animationType="slide"
                 transparent={true}
                 visible={editModalVisible}
                 onRequestClose={() => setEditModalVisible(false)}
             >
-                <BlurView intensity={100} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurContainer}>
-                    <View style={[styles.editModalView, { backgroundColor: colors.groupBg }]}>
-                        <View style={styles.modalHeaderRow}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
-                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                                <Text style={styles.closeBtn}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <BlurView intensity={100} tint={isDarkMode ? 'dark' : 'light'} style={styles.blurContainer}>
+                        <View style={[styles.editModalView, { backgroundColor: colors.groupBg }]}>
+                            <View style={styles.modalHeaderRow}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
+                                <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                    <Text style={styles.closeBtn}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                        <ScrollView>
-                            {/* AVATAR SELECTOR */}
-                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Choose Avatar</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.avatarScroll}>
-                                {avatarPresets.map((url, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        onPress={() => setSelectedAvatar(url)}
-                                        style={[
-                                            styles.avatarOption,
-                                            selectedAvatar === url && styles.avatarOptionSelected
-                                        ]}
-                                    >
-                                        <Image source={{ uri: url }} style={styles.avatarOptionImage} />
-                                    </TouchableOpacity>
-                                ))}
+                            <ScrollView keyboardShouldPersistTaps="handled">
+                                {/* AVATAR SELECTOR */}
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Choose Avatar</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.avatarScroll}>
+                                    {avatarPresets.map((url, index) => (
+                                        <TouchableOpacity
+                                            key={index}
+                                            onPress={() => setSelectedAvatar(url)}
+                                            style={[
+                                                styles.avatarOption,
+                                                selectedAvatar === url && styles.avatarOptionSelected
+                                            ]}
+                                        >
+                                            <Image source={{ uri: url }} style={styles.avatarOptionImage} />
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text }]}
+                                    value={editName}
+                                    onChangeText={setEditName}
+                                    placeholder="Enter your name"
+                                    placeholderTextColor="#9CA3AF"
+                                />
+
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Location</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text }]}
+                                    value={editLocation}
+                                    onChangeText={setEditLocation}
+                                    placeholder="e.g. New York, USA"
+                                    placeholderTextColor="#9CA3AF"
+                                />
+
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Bio</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text, height: 80, textAlignVertical: 'top' }]}
+                                    value={editBio}
+                                    onChangeText={setEditBio}
+                                    placeholder="Tell us about yourself..."
+                                    placeholderTextColor="#9CA3AF"
+                                    multiline
+                                />
+
+                                <TouchableOpacity
+                                    style={[styles.saveBtn, { backgroundColor: brand.BLUE, opacity: isSaving ? 0.7 : 1 }]}
+                                    onPress={saveProfile}
+                                    disabled={isSaving}
+                                >
+                                    <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
+                                </TouchableOpacity>
                             </ScrollView>
-
-                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Full Name</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text }]}
-                                value={editName}
-                                onChangeText={setEditName}
-                                placeholder="Enter your name"
-                                placeholderTextColor="#9CA3AF"
-                            />
-
-                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Location</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text }]}
-                                value={editLocation}
-                                onChangeText={setEditLocation}
-                                placeholder="e.g. New York, USA"
-                                placeholderTextColor="#9CA3AF"
-                            />
-
-                            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Bio</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: isDarkMode ? '#2C2C2E' : '#F3F4F6', color: colors.text, height: 80, textAlignVertical: 'top' }]}
-                                value={editBio}
-                                onChangeText={setEditBio}
-                                placeholder="Tell us about yourself..."
-                                placeholderTextColor="#9CA3AF"
-                                multiline
-                            />
-
-                            <TouchableOpacity
-                                style={[styles.saveBtn, { backgroundColor: brand.BLUE, opacity: isSaving ? 0.7 : 1 }]}
-                                onPress={saveProfile}
-                                disabled={isSaving}
-                            >
-                                <Text style={styles.saveBtnText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </BlurView>
-            </Modal >
+                        </View>
+                    </BlurView>
+                </KeyboardAvoidingView>
+            </Modal>
         </SafeAreaView >
     );
 };
@@ -649,10 +673,11 @@ const styles = StyleSheet.create({
     profileHeader: { alignItems: 'center', paddingTop: 60, paddingBottom: 40, paddingHorizontal: 20, overflow: 'hidden' },
     avatarContainer: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 12, borderWidth: 2, borderColor: '#FFF', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 15, elevation: 10, overflow: 'visible' },
     avatarImage: { width: 96, height: 96, borderRadius: 48 },
-    avatarText: { fontSize: 36, color: '#FFF', fontWeight: '900' },
+    avatarText: { fontSize: 36, color: '#FFF', fontWeight: '900', fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
     editBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#FFF', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#DDD' },
-    userName: { fontSize: 26, fontWeight: '800', color: '#FFF', marginBottom: 2, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
-    userEmail: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 8 },
+    userName: { fontSize: 26, fontWeight: '800', color: '#FFF', marginBottom: 2, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
+    userEmail: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 8, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
+
     locationContainer: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 15 },
     locationText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
     bioContainer: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, marginBottom: 12, marginTop: 8, maxWidth: '90%' },
@@ -678,14 +703,14 @@ const styles = StyleSheet.create({
     upgradeGradient: { paddingHorizontal: 40, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
     upgradeText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
     sectionHeader: { paddingHorizontal: 20, marginTop: 25, marginBottom: 12 },
-    sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 2 },
+    sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
     group: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', marginHorizontal: 15, marginBottom: 10, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10 },
     settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingLeft: 20, paddingRight: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-    settingLabel: { fontSize: 16, fontWeight: '600' },
-    statusText: { fontSize: 12, marginTop: 4 },
-    settingValue: { fontSize: 14 },
+    settingLabel: { fontSize: 16, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
+    statusText: { fontSize: 12, marginTop: 4, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
+    settingValue: { fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
     signOutBtn: { marginHorizontal: 20, marginTop: 15, marginBottom: 20, backgroundColor: '#FEF2F2', padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
-    signOutText: { color: '#EF4444', fontWeight: '700', fontSize: 16 },
+    signOutText: { color: '#EF4444', fontWeight: '700', fontSize: 16, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
     version: { textAlign: 'center', color: '#D1D5DB', fontSize: 12 },
     blurContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     centeredView: { flex: 1, justifyContent: 'center', alignItems: 'center' },
