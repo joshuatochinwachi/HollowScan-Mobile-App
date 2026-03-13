@@ -745,13 +745,7 @@ const HomeScreen = () => {
                                             <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 10, marginTop: 2, fontWeight: '700' }}>{getPlanPrice('premium_yearly')}</Text>
                                         </TouchableOpacity>
 
-                                        <TouchableOpacity
-                                            onPress={() => navigation.navigate('TelegramLink')}
-                                            style={{ flex: 1, minWidth: 100, backgroundColor: '#0EA5E9', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 13 }}>Telegram</Text>
-                                            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 10, marginTop: 2, fontWeight: '600' }}>Connect Bot</Text>
-                                        </TouchableOpacity>
+
                                     </View>
                                 </View>
                             );

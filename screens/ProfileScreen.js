@@ -382,19 +382,7 @@ const ProfileScreen = () => {
                                 </LinearGradient>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.upgradeBtn}
-                                onPress={() => navigation.navigate('TelegramLink')}
-                            >
-                                <LinearGradient
-                                    colors={['#0088cc', '#00acee']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={styles.upgradeGradient}
-                                >
-                                    <Text style={styles.upgradeText}>Link Telegram Premium</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
+
                         </View>
                     )}
 

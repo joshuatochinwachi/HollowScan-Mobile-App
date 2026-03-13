@@ -141,16 +141,7 @@ const DailyLimitModal = () => {
                                 </TouchableOpacity>
 
                                 {/* Telegram CTA */}
-                                {!telegramLinked && (
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: '#0EA5E9', padding: 16, borderRadius: 12, marginBottom: 12 }}
-                                        onPress={() => setShowTelegramFlow(true)}
-                                    >
-                                        <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                            📱 Connect Telegram
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
+
 
                                 {/* Close Button */}
                                 <TouchableOpacity
