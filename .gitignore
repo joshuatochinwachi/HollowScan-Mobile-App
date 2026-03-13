@@ -45,14 +45,6 @@ venv/
 hollowscan-1b311-firebase-adminsdk-fbsvc-779a5875e8.json
 
 
-# new one
-# hollowscan-1b311-firebase-adminsdk-fbsvc-740e1b1986.json
-# AuthKey_KJY2TRV893.p8
-
-# GoogleService-Info.plist
-
-# glossy-metric-455008-p1-55180b5daaf8.json
-
 
 
 
@@ -64,4 +56,14 @@ iap_implementation_plan.md
 
 
 # never forget to take this out before you build.. then untrack it using `git rm --cached eas.json` to bring it back when you're done
-# eas.json
+eas.json
+
+# new one
+hollowscan-1b311-firebase-adminsdk-fbsvc-740e1b1986.json
+AuthKey_KJY2TRV893.p8
+
+GoogleService-Info.plist
+
+glossy-metric-455008-p1-55180b5daaf8.json
+
+
