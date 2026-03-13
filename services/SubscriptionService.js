@@ -14,9 +14,9 @@ import Constants from '../Constants';
 
 const API_BASE_URL = Constants.API_BASE_URL;
 
-// Subscription product IDs defined in Google Play Console
+// Subscription product IDs defined in Google Play Console & Apple App Store Connect
 const itemSkus = Platform.select({
-    ios: [], // Add iOS SKUs if needed later
+    ios: ['premium_monthly', 'premium_yearly'], // Apple App Store SKUs
     android: ['premium_monthly', 'premium_yearly'],
 });
 
@@ -203,19 +203,37 @@ class SubscriptionService {
         }
 
         try {
-            console.log('[IAP] Verifying with backend for user:', this.currentUserId);
-            const response = await fetch(`${API_BASE_URL}/v1/auth/google-play/verify`, {
+            console.log(`[IAP] Verifying with backend for user: ${this.currentUserId} (OS: ${Platform.OS})`);
+            
+            let endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
+            let requestBody = {};
+            
+            if (Platform.OS === 'ios') {
+                // iOS Apple Pay flow
+                endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
+                requestBody = {
+                    user_id: this.currentUserId,
+                    receipt_data: purchase.transactionReceipt, // iOS gives us transactionReceipt
+                    product_id: purchase.productId,
+                };
+            } else {
+                // Android Google Play flow (Untouched)
+                endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
+                requestBody = {
+                    user_id: this.currentUserId,
+                    purchase_token: purchase.purchaseToken, // Android gives us purchaseToken
+                    product_id: purchase.productId,
+                };
+            }
+
+            const response = await fetch(endpointUrl, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'apikey': process.env.EXPO_PUBLIC_SUPABASE_KEY,
                     'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_KEY}`
                 },
-                body: JSON.stringify({
-                    user_id: this.currentUserId,
-                    purchase_token: purchase.purchaseToken,
-                    product_id: purchase.productId,
-                }),
+                body: JSON.stringify(requestBody),
             });
 
             const data = await response.json();
