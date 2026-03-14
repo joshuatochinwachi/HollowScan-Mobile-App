@@ -57,8 +57,8 @@ iap_implementation_plan.md
 
 
 # never forget to take this out before you build.. then untrack it using `git rm --cached eas.json` to bring it back when you're done
-# eas.json
-# google-services.json
+eas.json
+google-services.json
 
 
 # ios build only --- for push notifications
@@ -77,8 +77,3 @@ hollowscan-1b311-firebase-adminsdk-fbsvc-737122cecd.json
 
 # ....
 AuthKey_KJY2TRV893.p8
-
-
-
-
-
