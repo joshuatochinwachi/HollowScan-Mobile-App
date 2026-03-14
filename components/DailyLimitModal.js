@@ -93,19 +93,15 @@ const DailyLimitModal = () => {
                                     </Text>
                                 </View>
 
-                                {/* Premium Benefits (Mandatory for App Store) */}
-                                <View style={{ marginBottom: 20, paddingHorizontal: 5 }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                        <Text style={{ fontSize: 14, marginRight: 8 }}>🚀</Text>
-                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Unlimited daily deal views</Text>
-                                    </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                                        <Text style={{ fontSize: 14, marginRight: 8 }}>🌍</Text>
-                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>All regions (US, UK, CA)</Text>
-                                    </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        <Text style={{ fontSize: 14, marginRight: 8 }}>⚡</Text>
-                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Instant High-Profit alerts</Text>
+                                {/* Premium Benefits (Professional Polish) */}
+                                <View style={{ marginBottom: 25, alignItems: 'center', width: '100%' }}>
+                                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: '900', marginBottom: 15, textAlign: 'center' }}>
+                                        🔒 Unlock Premium for Full Access
+                                    </Text>
+                                    <View style={{ alignSelf: 'center' }}>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Unlimited Real-Time Marketplace Drops</Text>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Full Global Coverage (US, UK, and CA)</Text>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left' }}>• Priority High-Profit Network Notifications</Text>
                                     </View>
                                 </View>
 
@@ -156,22 +152,17 @@ const DailyLimitModal = () => {
                                     </View>
                                 </TouchableOpacity>
 
-                                {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
-                                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 5 }}>
-                                    <TouchableOpacity 
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        onPress={() => { setShowLimitModal(false); navigation.navigate('Profile'); }}
-                                    >
-                                        <Text style={{ color: brand.BLUE, fontSize: 11, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
-                                    </TouchableOpacity>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 11 }}>•</Text>
-                                    <TouchableOpacity 
-                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
-                                    >
-                                        <Text style={{ color: brand.BLUE, fontSize: 11, textDecorationLine: 'underline' }}>Privacy Policy</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions on iOS) */}
+                                {Platform.OS === 'ios' && (
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 5, marginBottom: 5 }}>
+                                        <TouchableOpacity 
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            onPress={() => { setShowLimitModal(false); navigation.navigate('Profile'); }}
+                                        >
+                                            <Text style={{ color: colors.textSecondary, fontSize: 10, textDecorationLine: 'underline' }}>Privacy & Terms</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
 
                                 {/* Telegram CTA */}
 

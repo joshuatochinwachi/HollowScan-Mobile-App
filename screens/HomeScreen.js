@@ -715,11 +715,11 @@ const HomeScreen = () => {
                             // Compact Paywall with Dual Options
                             return (
                                 <View style={[styles.paywallCompact, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: 'column', alignItems: 'center', gap: 12 }]}>
-                                    <View style={{ alignItems: 'center', marginBottom: 5 }}>
-                                        <Text style={[styles.paywallText, { color: colors.text, fontWeight: '800', fontSize: 14 }]}>
+                                    <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                                        <Text style={[styles.paywallText, { color: colors.text, fontWeight: '800', fontSize: 14, textAlign: 'center' }]}>
                                             🔒 Unlock All {totalAvailable}+ Daily Deals
                                         </Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4, textAlign: 'center', paddingHorizontal: 20 }}>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6, textAlign: 'center', paddingHorizontal: 25, lineHeight: 16 }}>
                                             Get unlimited access to all regions, real-time alerts, and synced Premium status.
                                         </Text>
                                     </View>
@@ -752,15 +752,17 @@ const HomeScreen = () => {
                                         </TouchableOpacity>
                                     </View>
 
-                                    {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
-                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 5 }}>
-                                        <TouchableOpacity 
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            onPress={() => navigation.navigate('Profile')}
-                                        >
-                                            <Text style={{ color: colors.textSecondary, fontSize: 10, textDecorationLine: 'underline' }}>Privacy & Terms</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                    {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions on iOS) */}
+                                    {Platform.OS === 'ios' && (
+                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 5 }}>
+                                            <TouchableOpacity
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                onPress={() => navigation.navigate('Profile')}
+                                            >
+                                                <Text style={{ color: colors.textSecondary, fontSize: 10, textDecorationLine: 'underline' }}>Privacy & Terms</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                 </View>
                             );
                         }

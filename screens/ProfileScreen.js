@@ -331,13 +331,20 @@ const ProfileScreen = () => {
                         </View>
                     )}
 
-                    {/* Premium Benefits List (Standard Apple Requirement) */}
+                    {/* PREMIUM UPGRADE SECTION */}
                     {!(user?.isPremium || isPremiumTelegram) && (
-                        <View style={styles.benefitList}>
-                            <Text style={styles.benefitItem}>🚀 Unlimited Deal Views (No Daily Limits)</Text>
-                            <Text style={styles.benefitItem}>🌍 Access to US, UK, and CA Deal Feeds</Text>
-                            <Text style={styles.benefitItem}>⚡ Instant Push Alerts for High-Value Flips</Text>
-                            <Text style={styles.benefitItem}>👑 Synced Premium Status across Mobile & Telegram</Text>
+                        <View style={{ width: '100%', alignItems: 'center', marginBottom: 10 }}>
+                            <Text style={{ color: '#FFF', fontSize: 19, fontWeight: '900', marginBottom: 15, textAlign: 'center', letterSpacing: -0.5 }}>
+                                🔒 Unlock Premium for Full Feature Access
+                            </Text>
+                            <View style={styles.benefitContainer}>
+                                <View style={styles.benefitList}>
+                                    <Text style={styles.benefitItem}>• Unlimited Real-Time Deals</Text>
+                                    <Text style={styles.benefitItem}>• Comprehensive Market Coverage</Text>
+                                    <Text style={styles.benefitItem}>• Priority High-Profit Push Alerts</Text>
+                                    <Text style={styles.benefitItem}>• Universal Sync (Mobile & Telegram)</Text>
+                                </View>
+                            </View>
                         </View>
                     )}
 
@@ -392,22 +399,24 @@ const ProfileScreen = () => {
                                 </LinearGradient>
                             </TouchableOpacity>
 
-                            {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
-                            <View style={styles.legalLinksPurchase}>
-                                <TouchableOpacity
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
-                                >
-                                    <Text style={styles.legalLinkText}>Terms of Use (EULA)</Text>
-                                </TouchableOpacity>
-                                <Text style={styles.legalLinkDot}>•</Text>
-                                <TouchableOpacity
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
-                                >
-                                    <Text style={styles.legalLinkText}>Privacy Policy</Text>
-                                </TouchableOpacity>
-                            </View>
+                            {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions on iOS) */}
+                            {Platform.OS === 'ios' && (
+                                <View style={styles.legalLinksPurchase}>
+                                    <TouchableOpacity
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+                                    >
+                                        <Text style={styles.legalLinkText}>Terms of Use (EULA)</Text>
+                                    </TouchableOpacity>
+                                    <Text style={styles.legalLinkDot}>•</Text>
+                                    <TouchableOpacity
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
+                                    >
+                                        <Text style={styles.legalLinkText}>Privacy Policy</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
                         </View>
                     )}
 
@@ -712,8 +721,17 @@ const styles = StyleSheet.create({
         fontSize: 12,
         letterSpacing: 0.5,
     },
-    benefitList: { width: '100%', paddingHorizontal: 20, marginBottom: 15, marginTop: 10 },
-    benefitItem: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginBottom: 6, fontWeight: '600' },
+    benefitContainer: { width: '100%', alignItems: 'center', marginBottom: 25, marginTop: 5 },
+    benefitList: { alignSelf: 'center', paddingHorizontal: 0 },
+    benefitItem: { 
+        color: 'rgba(255,255,255,0.7)', 
+        fontSize: 13, 
+        marginBottom: 8, 
+        fontWeight: '500', 
+        textAlign: 'left',
+        lineHeight: 18,
+        letterSpacing: 0.3
+    },
     legalLinksPurchase: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, marginBottom: 5 },
     legalLinkText: { color: 'rgba(255,255,255,0.5)', fontSize: 11, textDecorationLine: 'underline' },
     legalLinkDot: { color: 'rgba(255,255,255,0.3)', marginHorizontal: 8, fontSize: 11 },
