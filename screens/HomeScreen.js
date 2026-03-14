@@ -715,9 +715,15 @@ const HomeScreen = () => {
                             // Compact Paywall with Dual Options
                             return (
                                 <View style={[styles.paywallCompact, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: 'column', alignItems: 'center', gap: 12 }]}>
-                                    <Text style={[styles.paywallText, { color: colors.text, textAlign: 'center' }]}>
-                                        🔒 <Text style={{ fontWeight: 'bold' }}>Unlock all {totalAvailable}+ daily deals</Text>
-                                    </Text>
+                                    <View style={{ alignItems: 'center', marginBottom: 5 }}>
+                                        <Text style={[styles.paywallText, { color: colors.text, fontWeight: '800', fontSize: 14 }]}>
+                                            🔒 Unlock All {totalAvailable}+ Daily Deals
+                                        </Text>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 4, textAlign: 'center', paddingHorizontal: 20 }}>
+                                            Get unlimited access to all regions, real-time alerts, and synced Premium status.
+                                        </Text>
+                                    </View>
+
                                     <View style={{ flexDirection: 'row', gap: 6, width: '100%', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 10 }}>
                                         <TouchableOpacity
                                             onPress={async () => {
@@ -728,8 +734,8 @@ const HomeScreen = () => {
                                             }}
                                             style={{ flex: 1, minWidth: 100, backgroundColor: isDarkMode ? '#FFF' : '#111', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>Monthly</Text>
-                                            <Text style={{ color: isDarkMode ? '#666' : '#AAA', fontSize: 10, marginTop: 2 }}>{getPlanPrice('premium_monthly')}</Text>
+                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>1 Month</Text>
+                                            <Text style={{ color: isDarkMode ? '#666' : '#AAA', fontSize: 10, marginTop: 2 }}>{getPlanPrice('premium_monthly')} / mo</Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
@@ -741,11 +747,19 @@ const HomeScreen = () => {
                                             }}
                                             style={{ flex: 1, minWidth: 100, backgroundColor: '#FFD700', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                            <Text style={{ color: '#000', fontWeight: '900', fontSize: 13 }}>Yearly 👑</Text>
-                                            <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 10, marginTop: 2, fontWeight: '700' }}>{getPlanPrice('premium_yearly')}</Text>
+                                            <Text style={{ color: '#000', fontWeight: '900', fontSize: 13 }}>1 Year 👑</Text>
+                                            <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 10, marginTop: 2, fontWeight: '700' }}>{getPlanPrice('premium_yearly')} / yr</Text>
                                         </TouchableOpacity>
+                                    </View>
 
-
+                                    {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 5 }}>
+                                        <TouchableOpacity 
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            onPress={() => navigation.navigate('Profile')}
+                                        >
+                                            <Text style={{ color: colors.textSecondary, fontSize: 10, textDecorationLine: 'underline' }}>Privacy & Terms</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             );

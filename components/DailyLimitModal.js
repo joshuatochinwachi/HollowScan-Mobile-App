@@ -93,9 +93,25 @@ const DailyLimitModal = () => {
                                     </Text>
                                 </View>
 
+                                {/* Premium Benefits (Mandatory for App Store) */}
+                                <View style={{ marginBottom: 20, paddingHorizontal: 5 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 14, marginRight: 8 }}>🚀</Text>
+                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Unlimited daily deal views</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 14, marginRight: 8 }}>🌍</Text>
+                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>All regions (US, UK, CA)</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 14, marginRight: 8 }}>⚡</Text>
+                                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Instant High-Profit alerts</Text>
+                                    </View>
+                                </View>
+
                                 {/* Google/Apple Pay CTA */}
                                 <TouchableOpacity
-                                    style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 10 }}
+                                    style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 10, elevation: 4 }}
                                     onPress={async () => {
                                         const result = await purchasePremium('monthly');
                                         if (result.success) {
@@ -109,7 +125,7 @@ const DailyLimitModal = () => {
                                 >
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                            Unlock Monthly Premium
+                                            Monthly Premium • 1 Month
                                         </Text>
                                         <Text style={{ color: isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600' }}>
                                             {getPlanPrice('premium_monthly')} / month
@@ -118,7 +134,7 @@ const DailyLimitModal = () => {
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={{ backgroundColor: '#FFD700', padding: 16, borderRadius: 12, marginBottom: 12 }}
+                                    style={{ backgroundColor: '#FFD700', padding: 16, borderRadius: 12, marginBottom: 15, elevation: 4 }}
                                     onPress={async () => {
                                         const result = await purchasePremium('yearly');
                                         if (result.success) {
@@ -132,13 +148,30 @@ const DailyLimitModal = () => {
                                 >
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={{ color: '#000', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                            Unlock Yearly Premium 👑
+                                            Yearly Premium • 1 Year 👑
                                         </Text>
                                         <Text style={{ color: 'rgba(0,0,0,0.5)', fontSize: 12, fontWeight: '700' }}>
                                             {getPlanPrice('premium_yearly')} / year
                                         </Text>
                                     </View>
                                 </TouchableOpacity>
+
+                                {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
+                                <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 5 }}>
+                                    <TouchableOpacity 
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        onPress={() => { setShowLimitModal(false); navigation.navigate('Profile'); }}
+                                    >
+                                        <Text style={{ color: brand.BLUE, fontSize: 11, textDecorationLine: 'underline' }}>Terms of Use (EULA)</Text>
+                                    </TouchableOpacity>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 11 }}>•</Text>
+                                    <TouchableOpacity 
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
+                                    >
+                                        <Text style={{ color: brand.BLUE, fontSize: 11, textDecorationLine: 'underline' }}>Privacy Policy</Text>
+                                    </TouchableOpacity>
+                                </View>
 
                                 {/* Telegram CTA */}
 

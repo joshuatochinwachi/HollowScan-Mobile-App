@@ -331,9 +331,19 @@ const ProfileScreen = () => {
                         </View>
                     )}
 
+                    {/* Premium Benefits List (Standard Apple Requirement) */}
+                    {!(user?.isPremium || isPremiumTelegram) && (
+                        <View style={styles.benefitList}>
+                            <Text style={styles.benefitItem}>🚀 Unlimited Deal Views (No Daily Limits)</Text>
+                            <Text style={styles.benefitItem}>🌍 Access to US, UK, and CA Deal Feeds</Text>
+                            <Text style={styles.benefitItem}>⚡ Instant Push Alerts for High-Value Flips</Text>
+                            <Text style={styles.benefitItem}>👑 Synced Premium Status across Mobile & Telegram</Text>
+                        </View>
+                    )}
+
                     {/* Only show upgrade button if not premium */}
                     {!(user?.isPremium || isPremiumTelegram) && (
-                        <View style={{ gap: 12, width: '100%', marginTop: 15 }}>
+                        <View style={{ gap: 12, width: '100%', marginTop: 5 }}>
                             <TouchableOpacity
                                 style={styles.upgradeBtn}
                                 onPress={async () => {
@@ -350,7 +360,7 @@ const ProfileScreen = () => {
                                     style={styles.upgradeGradient}
                                 >
                                     <View style={{ alignItems: 'center' }}>
-                                        <Text style={styles.upgradeText}>Unlock Monthly Premium</Text>
+                                        <Text style={styles.upgradeText}>Monthly Premium • 1 Month</Text>
                                         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
                                             {getPlanPrice('premium_monthly')} / month
                                         </Text>
@@ -374,7 +384,7 @@ const ProfileScreen = () => {
                                     style={styles.upgradeGradient}
                                 >
                                     <View style={{ alignItems: 'center' }}>
-                                        <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium (Best Value) 👑</Text>
+                                        <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium • 1 Year (Best Value) 👑</Text>
                                         <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 12, fontWeight: '700' }}>
                                             {getPlanPrice('premium_yearly')} / year
                                         </Text>
@@ -382,7 +392,22 @@ const ProfileScreen = () => {
                                 </LinearGradient>
                             </TouchableOpacity>
 
-
+                            {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions) */}
+                            <View style={styles.legalLinksPurchase}>
+                                <TouchableOpacity
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+                                >
+                                    <Text style={styles.legalLinkText}>Terms of Use (EULA)</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.legalLinkDot}>•</Text>
+                                <TouchableOpacity
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}
+                                >
+                                    <Text style={styles.legalLinkText}>Privacy Policy</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     )}
 
@@ -687,12 +712,17 @@ const styles = StyleSheet.create({
         fontSize: 12,
         letterSpacing: 0.5,
     },
-    upgradeBtn: { overflow: 'hidden', borderRadius: 25, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 },
+    benefitList: { width: '100%', paddingHorizontal: 20, marginBottom: 15, marginTop: 10 },
+    benefitItem: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginBottom: 6, fontWeight: '600' },
+    legalLinksPurchase: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, marginBottom: 5 },
+    legalLinkText: { color: 'rgba(255,255,255,0.5)', fontSize: 11, textDecorationLine: 'underline' },
+    legalLinkDot: { color: 'rgba(255,255,255,0.3)', marginHorizontal: 8, fontSize: 11 },
+    upgradeBtn: { overflow: 'hidden', borderRadius: 25, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
     upgradeGradient: { paddingHorizontal: 40, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
     upgradeText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
     sectionHeader: { paddingHorizontal: 20, marginTop: 25, marginBottom: 12 },
     sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
-    group: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', marginHorizontal: 15, marginBottom: 10, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10 },
+    group: { borderWidth: 1, borderColor: 'rgba(0,0,0,0.03)', marginHorizontal: 15, marginBottom: 10, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 10, elevation: 1 },
     settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingLeft: 20, paddingRight: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
     settingLabel: { fontSize: 16, fontWeight: '600', fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
     statusText: { fontSize: 12, marginTop: 4, fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
