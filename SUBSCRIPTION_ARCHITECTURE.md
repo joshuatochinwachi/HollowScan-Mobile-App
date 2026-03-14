@@ -48,6 +48,3 @@ I have followed a **"Non-Destructive UI Injection"** approach. This means:
 ## 4. How to Verify
 - **On iOS:** Open the Profile screen. You should see the gold "Unlimited Views" list and a clear "Terms of Use (EULA)" link.
 - **On Android:** You will notice the upgrade buttons have a subtle shadow (elevation), making them "pop" more than the flat iOS version.
-
----
-*Created by Antigravity for the HollowScan Mobile Team.*
