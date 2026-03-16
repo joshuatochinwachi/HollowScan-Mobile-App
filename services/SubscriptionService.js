@@ -8,6 +8,7 @@ import {
     purchaseUpdatedListener,
     purchaseErrorListener,
     getAvailablePurchases,
+    getReceiptIOS,
     endConnection
 } from 'react-native-iap';
 import Constants from '../Constants';
@@ -212,11 +213,22 @@ class SubscriptionService {
                 // iOS Apple Pay flow
                 console.log('[IAP] Purchase object keys:', Object.keys(purchase));
                 
-                // v14+: purchaseToken is the base64 receipt string on iOS
-                const receipt = purchase.purchaseToken || purchase.transactionReceipt;
+                // v14+ SK2 returns JWS (eyJ...) by default which legacy /verifyReceipt rejects.
+                // We fetch the legacy Base64 receipt string explicitly.
+                let receipt = purchase.transactionReceipt;
+                
+                if (!receipt || receipt.startsWith('eyJ')) {
+                    console.log('[IAP] JWS detected or receipt missing, fetching legacy receipt...');
+                    try {
+                        receipt = await getReceiptIOS();
+                    } catch (rErr) {
+                        console.warn('[IAP] getReceiptIOS failed, falling back to token:', rErr);
+                        receipt = purchase.purchaseToken || purchase.transactionReceipt;
+                    }
+                }
                 
                 if (!receipt) {
-                    console.error('[IAP] ERROR: No receipt data found in purchase object!');
+                    console.error('[IAP] ERROR: No receipt data found in purchase object or file!');
                 }
 
                 endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
