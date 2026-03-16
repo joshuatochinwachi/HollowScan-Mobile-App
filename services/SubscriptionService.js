@@ -210,10 +210,19 @@ class SubscriptionService {
             
             if (Platform.OS === 'ios') {
                 // iOS Apple Pay flow
+                console.log('[IAP] Purchase object keys:', Object.keys(purchase));
+                
+                // v14+: purchaseToken is the base64 receipt string on iOS
+                const receipt = purchase.purchaseToken || purchase.transactionReceipt;
+                
+                if (!receipt) {
+                    console.error('[IAP] ERROR: No receipt data found in purchase object!');
+                }
+
                 endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
                 requestBody = {
                     user_id: this.currentUserId,
-                    receipt_data: purchase.transactionReceipt, // iOS gives us transactionReceipt
+                    receipt_data: receipt,
                     product_id: purchase.productId,
                 };
             } else {
