@@ -1,4 +1,4 @@
-# HollowScan Mobile App - Live on [Google (Android) PlayStore](https://play.google.com/store/apps/details?id=com.kttylabs.app) and [Apple (iOS) App Store](https://apps.apple.com/gb/app/hollowscan/id6759551811)
+# HollowScan Mobile App - Live on [Google (Android) PlayStore](https://hollowscan.com/android) and [Apple (iOS) App Store](https://hollowscan.com/ios)
 
 **HollowScan** is a powerful mobile arbitrage tool that helps users discover underpriced products across multiple regions (US, UK, Canada) for resale profit. Built with React Native and Expo, the app provides real-time deal scanning, Telegram integration, and premium subscription features.
 
