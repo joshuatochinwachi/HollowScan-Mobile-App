@@ -10,7 +10,7 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 
 ## Phase 2: Mobile App iOS Branching - COMPLETE
 - [x] Update `itemSkus.ios` in [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) to include `premium_monthly` and `premium_yearly`
-- [x] Add `Platform.OS === 'ios'` branch in [verifyWithBackend](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js#182-256) to target `/v1/auth/apple-iap/verify` endpoint
+- [x] Add `Platform.OS === 'ios'` branch in [verifyWithBackend](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js#202-287) to target `/v1/auth/apple-iap/verify` endpoint
 - [x] Pass `purchase.transactionReceipt` explicitly for iOS verification instead of `purchaseToken`
 - [x] Test iOS payment flow locally via EAS iOS simulator / physical iOS device (Pending User Verification)
 
@@ -21,9 +21,9 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [x] Create Auto-Renewable Subscriptions (`premium_monthly`, `premium_yearly`)
 
 ## Phase 4: Verification - IN PROGRESS
-- [ ] Verify Sandbox purchase success on iOS (via TestFlight)
-- [ ] Verify database sync for Apple receipts
-- [ ] Verify Android purchase functionality remains fully operational
+- [x] Verify Sandbox purchase success on iOS (via TestFlight)
+- [x] Verify database sync for Apple receipts
+- [x] Verify Android purchase functionality remains fully operational
 
 ## Phase 5: App Store Submission
 - [x] Upload iOS build to App Store Connect (Verified Build 16)
@@ -43,7 +43,7 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [ ] Remove local [git_history_scrub_guide.md](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/git_history_scrub_guide.md) before final official build (Optional)
 
 ## Phase 8: Addressing App Store Rejection 3.1.2(c) - COMPLETE
-- [x] Improved subscription descriptions in [ProfileScreen.js](file:///C:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/ProfileScreen.js), [HomeScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/HomeScreen.js), and [DailyLimitModal.js](file:///C:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/components/DailyLimitModal.js)
+- [x] Improved subscription descriptions in [ProfileScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/ProfileScreen.js), [HomeScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/HomeScreen.js), and [DailyLimitModal.js](file:///C:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/components/DailyLimitModal.js)
 - [x] Added functional Terms of Use (EULA) and Privacy Policy links to the UI (Conditionally hidden EULA on Android)
 - [x] Profile, Home, and Limit Modal optimized for platform-specific legal requirements
 - [x] Update App Store Connect metadata with EULA and Privacy Policy links (Verified COMPLETE)
@@ -63,11 +63,18 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [x] Analyze backend logs for `[APPLE DEBUG]` output (Found: `receipt_data` is missing/empty)
 - [x] Fix property name in [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) (use `purchaseToken` for iOS)
 - [x] Add diagnostic logs to [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) to inspect [purchase](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/context/UserContext.js#637-648) object
-- [/] Push changes and request new mobile app build from user
-- [ ] Test verification flow again via TestFlight
+- [x] Push Build 19 and request new mobile app build from user
+- [x] Investigate Apple `21002` (malformed) error based on new backend logs
+- [x] Verify final fix flow via TestFlight (SUCCESS - Validation success confirmed)
 
 ## Phase 12: iOS Production Build Preparation
 - [x] Identify ignored critical files (eas.json, GoogleService-Info.plist, google-services.json)
 - [x] Create [IOS_BUILD_GUIDE_PRODUCTION.md](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/IOS_BUILD_GUIDE_PRODUCTION.md) in codebase
-- [ ] Instruct user on temporary tracking and build command
-- [ ] (Optional) Cleanup tracking after build starts
+- [x] Instruct user on temporary tracking and build command
+- [x] (Optional) Cleanup tracking after build starts
+
+## Phase 13: Addressing Apple Rejection 2.1(b) - App Completeness
+- [x] Analyze rejection message (No action on Pay button)
+- [x] Implement `getAvailablePurchases` cleanup in `SubscriptionService.initialize`
+- [x] Draft perfect reply for Apple Review
+- [x] Push Build 19 and request review again
