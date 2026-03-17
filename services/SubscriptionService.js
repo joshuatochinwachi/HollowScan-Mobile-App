@@ -40,6 +40,25 @@ class SubscriptionService {
             const result = await initConnection();
             this.isConnected = true;
             console.log('[IAP] Connection initialized successfully:', result);
+
+            // iOS FIX: Clear any "stuck" transactions on launch
+            if (Platform.OS === 'ios') {
+                try {
+                    const purchases = await getAvailablePurchases();
+                    if (purchases && purchases.length > 0) {
+                        console.log(`[IAP] Found ${purchases.length} pending transactions on launch. Cleaning up...`);
+                        for (const purchase of purchases) {
+                            try {
+                                await finishTransaction({ purchase, isConsumable: false });
+                            } catch (fErr) {
+                                console.warn('[IAP] Failed to finish pending transaction:', fErr);
+                            }
+                        }
+                    }
+                } catch (pErr) {
+                    console.warn('[IAP] Error checking for pending transactions:', pErr);
+                }
+            }
         } catch (err) {
             this.isConnected = false;
             console.warn('[IAP] Connection error:', err.code, err.message);
