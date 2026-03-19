@@ -40,7 +40,7 @@
 - **Database**: Supabase (PostgreSQL) for user data and transaction logs.
 - **Intelligence**: Discord Archiver/Scraper for real-time deal ingestion.
 
-[Backend (FAST API) Github Repo](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot, Flask API and Discord Archiver Github Repo](https://github.com/joshuatochinwachi/dc_scrape)
+[HollowScan (Official Website) Github Repo](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FAST API) Github Repo](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot, Flask API and Discord Archiver Github Repo](https://github.com/joshuatochinwachi/dc_scrape)
 
 ---
 
