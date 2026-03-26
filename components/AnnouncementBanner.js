@@ -47,15 +47,14 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
     }, [message]);
 
     const renderMessage = (text) => {
-        // Simple regex to split text and links: [Text](URL)
         const parts = text.split(/(\[.+?\]\(.+?\))/g);
         return (
-            <Text 
-                numberOfLines={1} 
-                style={[styles.message, { color: colors.text }]}
+            <View 
+                style={{ flexDirection: 'row', alignItems: 'center' }}
                 onLayout={(e) => {
-                    // Capture text width for precise animation looping
-                    textWidth.current = e.nativeEvent.layout.width;
+                    // Capture actual width of the unconstrained text
+                    const width = e.nativeEvent.layout.width;
+                    if (width > 0) textWidth.current = width;
                 }}
             >
                 {parts.map((part, index) => {
@@ -71,9 +70,11 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
                             </Text>
                         );
                     }
-                    return <Text key={index}>{part}</Text>;
+                    return <Text key={index} style={[styles.message, { color: colors.text }]}>{part}</Text>;
                 })}
-            </Text>
+                {/* Extra spacing at the end for a cleaner loop */}
+                <Text style={{ width: 100 }}>{"          "}</Text>
+            </View>
         );
     };
 
@@ -86,8 +87,13 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
             <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? '#111' : '#E0EFFF' }]}>
                 <Text style={styles.icon}>📢</Text>
             </View>
-            <View style={styles.tickerContainer}>
-                <Animated.View style={[styles.tickerWrapper, { transform: [{ translateX: scrollX }] }]}>
+            <View style={styles.tickerOuter}>
+                <Animated.View 
+                    style={[
+                        styles.tickerWrapper, 
+                        { transform: [{ translateX: scrollX }] }
+                    ]}
+                >
                     {renderMessage(message)}
                 </Animated.View>
             </View>
@@ -114,17 +120,17 @@ const styles = StyleSheet.create({
     icon: {
         fontSize: 12,
     },
-    tickerContainer: {
+    tickerOuter: {
         flex: 1,
         height: '100%',
+        overflow: 'hidden',
         justifyContent: 'center',
     },
     tickerWrapper: {
+        // Absolute position allows it to expand beyond the parent width
+        position: 'absolute',
         flexDirection: 'row',
         alignItems: 'center',
-        // Important: Position absolute to avoid layout shifts
-        position: 'absolute',
-        left: 0,
     },
     message: {
         fontSize: 13,
@@ -132,6 +138,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.2,
     },
     link: {
+        fontSize: 13,
         textDecorationLine: 'underline',
         fontWeight: '800',
     }
