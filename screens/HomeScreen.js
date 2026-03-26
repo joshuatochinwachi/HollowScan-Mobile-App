@@ -28,6 +28,7 @@ import { UserContext } from '../context/UserContext';
 import LiveProductService from '../services/LiveProductService';
 import { setupNotificationHandler } from '../services/PushNotificationService';
 import { formatPriceDisplay } from '../utils/format';
+import AnnouncementBanner from '../components/AnnouncementBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -79,6 +80,7 @@ const HomeScreen = () => {
     const [totalAvailable, setTotalAvailable] = useState(0);
 
     const [countdown, setCountdown] = useState(''); // Keep local if used for UI display in feed, but modal uses context
+    const [announcement, setAnnouncement] = useState('');
 
 
 
@@ -263,7 +265,8 @@ const HomeScreen = () => {
             fetchAlerts(0, true, null, forceRefresh),
             // Background sync context to catch expiry even if Profile isn't opened
             checkTelegramStatus(),
-            refreshUserStatus()
+            refreshUserStatus(),
+            fetchAnnouncement()
         ]);
 
         setIsLoading(false);
@@ -286,6 +289,21 @@ const HomeScreen = () => {
             setQuota({ used: data.views_used, limit: data.views_limit });
             // Local state removed, syncing from context is handled by checkTelegramStatus and refreshUserStatus
         } catch (e) { }
+    };
+
+    const fetchAnnouncement = async () => {
+        try {
+            const response = await fetch(`${Constants.API_BASE_URL}/v1/announcement`);
+            const data = await response.json();
+            if (data && data.message) {
+                setAnnouncement(data.message);
+            } else {
+                setAnnouncement('');
+            }
+        } catch (e) {
+            console.log('[HOME] Announcement fetch failed:', e);
+            setAnnouncement('');
+        }
     };
 
     const fetchAlerts = async (currentOffset, reset = false, overrideSearch = null, forceRefresh = false) => {
@@ -684,6 +702,13 @@ const HomeScreen = () => {
                     </View>
                 )}
             </View>
+
+            {/* LIVE ANNOUNCEMENT TICKER */}
+            <AnnouncementBanner 
+                message={announcement} 
+                isDarkMode={isDarkMode} 
+                colors={colors} 
+            />
 
             {/* EMAIL VERIFICATION BANNER REMOVED - REPLACED BY FULL SCREEN GATE */}
 
