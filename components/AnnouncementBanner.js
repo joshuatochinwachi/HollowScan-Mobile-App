@@ -19,28 +19,32 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
     const textWidth = useRef(0);
 
     useEffect(() => {
+        let isCancelled = false;
+        
         const startAnimation = () => {
-            // Speed calculation: roughly 50 pixels per second
-            // We scroll from SCREEN_WIDTH to -textWidth
-            const totalDistance = SCREEN_WIDTH + (textWidth.current || 500);
-            const duration = totalDistance * 20; // adjuts speed here
+            if (isCancelled) return;
+            
+            // Speed calculation
+            const totalDistance = SCREEN_WIDTH + (textWidth.current || 1000);
+            const duration = totalDistance * 20;
 
             scrollX.setValue(SCREEN_WIDTH);
             
             Animated.timing(scrollX, {
-                toValue: -(textWidth.current || 500),
+                toValue: -(textWidth.current || 1000),
                 duration: duration,
                 easing: Easing.linear,
                 useNativeDriver: true,
                 isInteraction: false
             }).start(({ finished }) => {
-                if (finished) startAnimation();
+                if (finished && !isCancelled) startAnimation();
             });
         };
 
-        // Small delay to allow layout
-        const timer = setTimeout(startAnimation, 500);
+        // Delay to allow layout measurement
+        const timer = setTimeout(startAnimation, 800);
         return () => {
+            isCancelled = true;
             clearTimeout(timer);
             scrollX.stopAnimation();
         };
@@ -50,37 +54,48 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
         const parts = text.split(/(\[.+?\]\(.+?\))/g);
         return (
             <View 
-                style={{ flexDirection: 'row', alignItems: 'center' }}
+                style={styles.textContainer}
                 onLayout={(e) => {
-                    // Capture actual width of the unconstrained text
-                    const width = e.nativeEvent.layout.width;
-                    if (width > 0) textWidth.current = width;
+                    const w = e.nativeEvent.layout.width;
+                    // Only update if we get a real measurement
+                    if (w > 10) textWidth.current = w;
                 }}
             >
                 {parts.map((part, index) => {
                     const match = part.match(/\[(.+?)\]\((.+?)\)/);
                     if (match) {
                         return (
-                            <Text 
+                            <TouchableOpacity 
                                 key={index} 
-                                style={[styles.link, { color: '#60A5FA' }]} 
-                                onPress={() => Linking.openURL(match[2].trim())}
+                                activeOpacity={0.6}
+                                onPress={() => {
+                                    const url = match[2].trim();
+                                    console.log('[ANN] Opening URL:', url);
+                                    Linking.openURL(url).catch(err => console.error("URL Error", err));
+                                }}
+                                style={styles.linkWrapper}
                             >
-                                {match[1]}
-                            </Text>
+                                <Text style={[styles.link, { color: '#60A5FA' }]}>
+                                    {match[1]}
+                                </Text>
+                            </TouchableOpacity>
                         );
                     }
-                    return <Text key={index} style={[styles.message, { color: colors.text }]}>{part}</Text>;
+                    return (
+                        <Text key={index} style={[styles.message, { color: colors.text }]}>
+                            {part}
+                        </Text>
+                    );
                 })}
-                {/* Extra spacing at the end for a cleaner loop */}
-                <Text style={{ width: 100 }}>{"          "}</Text>
+                {/* Spacer for loop gap */}
+                <View style={{ width: 150 }} />
             </View>
         );
     };
 
     return (
         <View style={[styles.container, { 
-            backgroundColor: isDarkMode ? 'rgba(0,0,0,0.3)' : '#F0F7FF', 
+            backgroundColor: isDarkMode ? 'rgba(10,10,10,0.8)' : '#F0F7FF', 
             borderColor: colors.border,
             borderBottomWidth: 1 
         }]}>
@@ -103,44 +118,51 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
 
 const styles = StyleSheet.create({
     container: {
-        height: 34,
+        height: 38,
         flexDirection: 'row',
         alignItems: 'center',
         overflow: 'hidden',
     },
     iconContainer: {
-        width: 38,
+        width: 42,
         height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 10,
+        zIndex: 20, // Always on top
         borderEndWidth: 1,
-        borderEndColor: 'rgba(255,255,255,0.05)',
+        borderEndColor: 'rgba(255,255,255,0.1)',
     },
     icon: {
-        fontSize: 12,
+        fontSize: 14,
     },
     tickerOuter: {
         flex: 1,
         height: '100%',
-        overflow: 'hidden',
         justifyContent: 'center',
     },
     tickerWrapper: {
-        // Absolute position allows it to expand beyond the parent width
         position: 'absolute',
+        flexDirection: 'row',
+        alignItems: 'center',
+        // Forced infinite width to prevent any wrapping
+        width: 20000, 
+    },
+    textContainer: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     message: {
         fontSize: 13,
         fontWeight: '700',
-        letterSpacing: 0.2,
+    },
+    linkWrapper: {
+        paddingHorizontal: 2,
+        justifyContent: 'center',
     },
     link: {
         fontSize: 13,
         textDecorationLine: 'underline',
-        fontWeight: '800',
+        fontWeight: '900',
     }
 });
 
