@@ -60,6 +60,9 @@ python -m git_filter_repo --invert-paths --path AuthKey_KJY2TRV893.p8 --force
 python -m git_filter_repo --invert-paths --path GoogleService-Info.plist --force
 python -m git_filter_repo --invert-paths --path glossy-metric-455008-p1-55180b5daaf8.json --force
 python -m git_filter_repo --invert-paths --path eas.json --force
+
+# multiple files at once
+python -m git_filter_repo --invert-paths --path eas.json --path google-services.json --force
 ```
 
 ## 3. Re-link to GitHub (Origin)
