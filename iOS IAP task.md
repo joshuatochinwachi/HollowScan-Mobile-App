@@ -43,7 +43,7 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [ ] Remove local [git_history_scrub_guide.md](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/git_history_scrub_guide.md) before final official build (Optional)
 
 ## Phase 8: Addressing App Store Rejection 3.1.2(c) - COMPLETE
-- [x] Improved subscription descriptions in [ProfileScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/ProfileScreen.js), [HomeScreen.js](file:///C:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/HomeScreen.js), and [DailyLimitModal.js](file:///C:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/components/DailyLimitModal.js)
+- [x] Improved subscription descriptions in `ProfileScreen.js`, [HomeScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/HomeScreen.js), and [DailyLimitModal.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/components/DailyLimitModal.js)
 - [x] Added functional Terms of Use (EULA) and Privacy Policy links to the UI (Conditionally hidden EULA on Android)
 - [x] Profile, Home, and Limit Modal optimized for platform-specific legal requirements
 - [x] Update App Store Connect metadata with EULA and Privacy Policy links (Verified COMPLETE)
@@ -62,7 +62,7 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [x] Add backend logging to inspect incoming verification requests
 - [x] Analyze backend logs for `[APPLE DEBUG]` output (Found: `receipt_data` is missing/empty)
 - [x] Fix property name in [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) (use `purchaseToken` for iOS)
-- [x] Add diagnostic logs to [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) to inspect [purchase](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/context/UserContext.js#637-648) object
+- [x] Add diagnostic logs to [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) to inspect [purchase](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py#2632-2685) object
 - [x] Push Build 19 and request new mobile app build from user
 - [x] Investigate Apple `21002` (malformed) error based on new backend logs
 - [x] Verify final fix flow via TestFlight (SUCCESS - Validation success confirmed)
@@ -79,3 +79,39 @@ This document tracks the integration of iOS In-App Purchases (via Apple Pay) int
 - [x] Draft perfect reply for Apple Review
 - [x] Push Build 19 and request review again
 - [x] **STATUS: 100% Complete and Live on App Store**
+
+## Phase 4: Post-Launch Support
+- [x] Investigate Telegram sync failure: `[SYNC] Failed to upload bot_users.json`
+- [x] Search for sync logic in [app.py](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py)
+- [x] Apply fix to [update_bot_user_premium](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py#2522-2571) in [app.py](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py)
+    - [x] Correct Supabase URL typos and path segments
+    - [x] Adjust date formatting to use **Naive UTC** (no Z/offset) for bot comparison compatibility
+    - [x] Implement field preservation (`**bot_users.get`) to prevent metadata loss
+    - [x] Refine `source` field to accurately distinguish between **Apple** and **Google**
+    - [x] Implement **App-to-Telegram** proactive sync during account linking
+- [x] User Verification (Logic verified, ready for Railway)
+    - [ ] Deploy updated [app.py](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py) to Railway
+    - [ ] Unlink and relink Telegram in the mobile app
+    - [ ] Confirm "Subscribed" status in the Telegram bot @HollowScanBot
+
+## Phase 14: Debugging Apple IAP Subscription Gap
+- [ ] Analyze Railway backend logs for `[APPLE DEBUG]` and `[APPLE VERIFY]`
+- [/] Verify environment variables and shared secret configuration
+- [ ] Add enhanced logging to [apple_iap_utils.py](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/apple_iap_utils.py) if needed
+- [ ] Cross-check [SubscriptionService.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/services/SubscriptionService.js) receipt sending logic
+
+## Phase 15: Remote Announcement Scroller (Live Messaging) - COMPLETE
+- [x] Implementation Plan & Design
+    - [x] Create [implementation_plan_announcement_scroller.md](file:///c:/Users/Jo$h/.gemini/antigravity/brain/f020416e-ee2f-4781-bc59-777f60c500eb/implementation_plan_announcement_scroller.md)
+    - [x] Add `/v1/announcement` endpoint to [app.py](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Fast-API-Backend/app.py)
+    - [x] Create [components/AnnouncementBanner.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/components/AnnouncementBanner.js) with ticker logic
+- [x] Frontend Integration
+    - [x] Update [HomeScreen.js](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/screens/HomeScreen.js) to fetch and display the banner
+    - [x] Add deployment instructions for Railway Environment Variable
+
+## Phase 16: App Store Submission Version Bump
+- [x] Bump [app.json](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/app.json) version from `1.0.0` to `1.0.1`
+- [ ] Temporary track [eas.json](file:///c:/Users/Jo$h/Desktop/Visual%20Studio%20Code/HollowScan-Mobile-App/eas.json) & certificates
+- [ ] Run `eas build --platform ios --profile production`
+- [x] Run `eas submit --platform ios`
+- [x] Verify build is appearing on App Store Connect (Waiting for Review)
