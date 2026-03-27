@@ -53,11 +53,11 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
     const renderMessage = (text) => {
         const parts = text.split(/(\[.+?\]\(.+?\))/g);
         return (
-            <View 
-                style={styles.textContainer}
+            <Text 
+                numberOfLines={1} 
+                style={[styles.message, { color: colors.text }]}
                 onLayout={(e) => {
                     const w = e.nativeEvent.layout.width;
-                    // Only update if we get a real measurement
                     if (w > 10) textWidth.current = w;
                 }}
             >
@@ -65,31 +65,20 @@ const AnnouncementBanner = ({ message, isDarkMode, colors }) => {
                     const match = part.match(/\[(.+?)\]\((.+?)\)/);
                     if (match) {
                         return (
-                            <TouchableOpacity 
+                            <Text 
                                 key={index} 
-                                activeOpacity={0.6}
-                                onPress={() => {
-                                    const url = match[2].trim();
-                                    console.log('[ANN] Opening URL:', url);
-                                    Linking.openURL(url).catch(err => console.error("URL Error", err));
-                                }}
-                                style={styles.linkWrapper}
+                                style={[styles.link, { color: '#60A5FA' }]} 
+                                onPress={() => Linking.openURL(match[2].trim())}
                             >
-                                <Text style={[styles.link, { color: '#60A5FA' }]}>
-                                    {match[1]}
-                                </Text>
-                            </TouchableOpacity>
+                                {match[1]}
+                            </Text>
                         );
                     }
-                    return (
-                        <Text key={index} style={[styles.message, { color: colors.text }]}>
-                            {part}
-                        </Text>
-                    );
+                    return <Text key={index}>{part}</Text>;
                 })}
-                {/* Spacer for loop gap */}
-                <View style={{ width: 150 }} />
-            </View>
+                {/* Visual Gap for the Loop */}
+                <Text>{"                    "}</Text>
+            </Text>
         );
     };
 
@@ -147,17 +136,9 @@ const styles = StyleSheet.create({
         // Forced infinite width to prevent any wrapping
         width: 20000, 
     },
-    textContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     message: {
         fontSize: 13,
         fontWeight: '700',
-    },
-    linkWrapper: {
-        paddingHorizontal: 2,
-        justifyContent: 'center',
     },
     link: {
         fontSize: 13,
