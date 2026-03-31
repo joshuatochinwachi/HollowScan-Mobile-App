@@ -24,6 +24,7 @@ export const UserProvider = ({ children }) => {
     const [isPremiumTelegram, setIsPremiumTelegram] = useState(false);
     const [premiumUntil, setPremiumUntil] = useState(null);
     const [showLimitModal, setShowLimitModal] = useState(false);
+    const [needsOnboarding, setNeedsOnboarding] = useState(false);
     const [countdown, setCountdown] = useState('');
     const [selectedRegion, setSelectedRegion] = useState('USA Stores');
     const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -202,6 +203,7 @@ export const UserProvider = ({ children }) => {
 
             const data = await response.json();
             if (data.success && data.user) {
+                setNeedsOnboarding(true);
                 await updateUser(data.user);
                 return { success: true };
             } else {
@@ -718,6 +720,8 @@ export const UserProvider = ({ children }) => {
                 premiumUntil,
                 showLimitModal,
                 setShowLimitModal,
+                needsOnboarding,
+                setNeedsOnboarding,
                 countdown,
                 selectedRegion,
                 updateRegion,

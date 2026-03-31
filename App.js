@@ -25,6 +25,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import SplashScreen from './screens/SplashScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
+import PremiumPaywallScreen from './screens/PremiumPaywallScreen';
 import VerificationScreen from './screens/VerificationScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import ChangePasswordScreen from './screens/ChangePasswordScreen';
@@ -201,6 +202,7 @@ const NavigationRoot = ({ showSplash, setShowSplash, linking }) => {
                 <>
                   <Stack.Screen name="Root" component={TabNavigator} />
                   <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ presentation: 'card' }} />
+                  <Stack.Screen name="PremiumPaywall" component={PremiumPaywallScreen} options={{ presentation: 'modal' }} />
                   <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                   <Stack.Screen name="TelegramLink" component={TelegramLinkScreen} />
                   <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -244,6 +246,7 @@ export default function App() {
           }
         },
         ProductDetail: 'product/:productId',
+        PremiumPaywall: 'premium',
       },
     },
   };

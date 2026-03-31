@@ -77,7 +77,7 @@ const DailyLimitModal = () => {
                             <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
                                 {showTelegramFlow
                                     ? 'Link your Telegram to sync premium status and get instant deal alerts!'
-                                    : "You've viewed your 4 free products for today. Come back tomorrow or upgrade to Premium!"}
+                                    : "Unlock your 3-Day Free Trial to see all deals clearly! Start profiting with 100% access today."}
                             </Text>
                         </View>
 
@@ -94,40 +94,37 @@ const DailyLimitModal = () => {
                                 </View>
 
                                 {/* Premium Benefits (Professional Polish) */}
-                                <View style={{ marginBottom: 25, alignItems: 'center', width: '100%' }}>
-                                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: '900', marginBottom: 15, textAlign: 'center' }}>
-                                        🔒 Unlock Premium for Full Access
-                                    </Text>
-                                    <View style={{ alignSelf: 'center' }}>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Unlimited Real-Time Marketplace Drops</Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Full Global Coverage (US, UK, and CA)</Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left' }}>• Priority High-Profit Network Notifications</Text>
-                                    </View>
-                                </View>
+                                    <View>
+                                        {/* Premium Benefits (Professional Polish) */}
+                                        <View style={{ marginBottom: 25, alignItems: 'center', width: '100%' }}>
+                                            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '900', marginBottom: 15, textAlign: 'center' }}>
+                                                🚀 Unlock 3-Day Free Trial
+                                            </Text>
+                                            <View style={{ alignSelf: 'center' }}>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Unlimited Real-Time Marketplace Drops</Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left', marginBottom: 6 }}>• Full Global Coverage (US, UK, and CA)</Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', textAlign: 'left' }}>• Priority High-Profit Network Notifications</Text>
+                                            </View>
+                                        </View>
 
-                                {/* Google/Apple Pay CTA */}
-                                <TouchableOpacity
-                                    style={{ backgroundColor: isDarkMode ? '#FFF' : '#111', padding: 16, borderRadius: 12, marginBottom: 10, elevation: 4 }}
-                                    onPress={async () => {
-                                        const result = await purchasePremium('monthly');
-                                        if (result.success) {
-                                            setShowLimitModal(false);
-                                        } else {
-                                            if (result.message !== 'Purchase cancelled') {
-                                                Alert.alert('Error', result.message || 'Purchase failed');
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <View style={{ alignItems: 'center' }}>
-                                        <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
-                                            Monthly Premium • 1 Month
-                                        </Text>
-                                        <Text style={{ color: isDarkMode ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600' }}>
-                                            {getPlanPrice('premium_monthly')} / month
-                                        </Text>
+                                        {/* Google/Apple Pay CTA */}
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: brand.BLUE, padding: 16, borderRadius: 12, marginBottom: 10, elevation: 4 }}
+                                            onPress={async () => {
+                                                setShowLimitModal(false);
+                                                navigation.navigate('PremiumPaywall');
+                                            }}
+                                        >
+                                            <View style={{ alignItems: 'center' }}>
+                                                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800', textAlign: 'center' }}>
+                                                    Start 3-Day Free Trial
+                                                </Text>
+                                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
+                                                    Then {getPlanPrice('premium_monthly')} / month • Cancel anytime
+                                                </Text>
+                                            </View>
+                                        </TouchableOpacity>
                                     </View>
-                                </TouchableOpacity>
 
                                 <TouchableOpacity
                                     style={{ backgroundColor: '#FFD700', padding: 16, borderRadius: 12, marginBottom: 15, elevation: 4 }}

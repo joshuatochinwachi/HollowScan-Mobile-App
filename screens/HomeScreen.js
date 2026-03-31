@@ -47,7 +47,7 @@ const getRelativeTime = (dateString) => {
 
 const HomeScreen = () => {
     const navigation = useNavigation();
-    const { user, isDarkMode, getRemainingViews, trackProductView, isPremium: userIsPremium, telegramLinked, checkTelegramStatus, refreshUserStatus, selectedRegion, updateRegion, purchasePremium, getPlanPrice } = useContext(UserContext);
+    const { user, isDarkMode, getRemainingViews, trackProductView, isPremium: userIsPremium, telegramLinked, checkTelegramStatus, refreshUserStatus, selectedRegion, updateRegion, purchasePremium, getPlanPrice, needsOnboarding, setNeedsOnboarding } = useContext(UserContext);
 
     // CONFIG
     const LIMIT = 10;
@@ -69,7 +69,6 @@ const HomeScreen = () => {
 
     const [dynamicCategories, setDynamicCategories] = useState({});
     const [alerts, setAlerts] = useState([]);
-    const [quota, setQuota] = useState({ used: 0, limit: 4 });
 
     const [isLoading, setIsLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -121,6 +120,13 @@ const HomeScreen = () => {
     }, [selectedRegion]);
 
     useEffect(() => {
+        if (needsOnboarding) {
+            setNeedsOnboarding(false);
+            navigation.navigate('PremiumPaywall');
+        }
+    }, [needsOnboarding]);
+
+    useEffect(() => {
         fetchInitialData();
     }, [viewRegion, selectedCategories]); // Fetch based on viewRegion
 
@@ -155,22 +161,14 @@ const HomeScreen = () => {
     };
 
     const handleProductPress = async (product) => {
-        // Check if user is premium - bypass limit
+        // Check if user is premium - bypass everything
         if (userIsPremium) {
             navigation.navigate('ProductDetail', { product });
             return;
         }
 
-        // Check daily limit for free users
-        const result = await trackProductView(product.id);
-
-        if (result.allowed) {
-            // Update quota display
-            const remaining = getRemainingViews();
-            setQuota({ used: 4 - remaining, limit: 4 });
-            navigation.navigate('ProductDetail', { product });
-        }
-
+        // Free user - show paywall
+        navigation.navigate('PremiumPaywall');
     };
 
     // SETUP LIVE UPDATES
@@ -190,9 +188,6 @@ const HomeScreen = () => {
                 const existingIds = new Set(prev.map(a => a.id));
                 const uniqueNew = newProducts.filter(p => !existingIds.has(p.id));
                 const combined = [...uniqueNew, ...prev];
-                if (!userIsPremium) {
-                    return combined.slice(0, 4);
-                }
                 return combined;
             });
             newProducts.forEach(product => {
@@ -357,7 +352,7 @@ const HomeScreen = () => {
 
     const handleLoadMore = () => {
         if (!hasMore || isLoadingMore || isLoading || alerts.length === 0) return;
-        if (!userIsPremium && alerts.length >= 4) return;
+        // Infinite scroll for all users (free are blurred)
 
         setIsLoadingMore(true);
         fetchAlerts(offset, false, searchQuery).then(() => {
@@ -560,14 +555,19 @@ const HomeScreen = () => {
                                     </View>
 
                                     {hasResell && displayResale && (
-                                        <View style={styles.priceRight}>
-                                            <Text style={[styles.resalePrice, { color: '#10B981', textAlign: 'right' }]}>
-                                                Market: {displayResale}
-                                            </Text>
-                                            {roiPercent > 0 && (
-                                                <View style={[styles.roiBadgeSmall, { backgroundColor: brand.BLUE + '15' }]}>
-                                                    <Text style={[styles.roiBadgeText, { color: brand.BLUE }]}>+{roiPercent}% ROI</Text>
-                                                </View>
+                                        <View style={[styles.priceRight, { overflow: 'hidden' }]}>
+                                            <View>
+                                                <Text style={[styles.resalePrice, { color: '#10B981', textAlign: 'right' }]}>
+                                                    Market: {displayResale}
+                                                </Text>
+                                                {roiPercent > 0 && (
+                                                    <View style={[styles.roiBadgeSmall, { backgroundColor: brand.BLUE + '15' }]}>
+                                                        <Text style={[styles.roiBadgeText, { color: brand.BLUE }]}>+{roiPercent}% ROI</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            {!userIsPremium && (
+                                                <BlurView intensity={25} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
                                             )}
                                         </View>
                                     )}
@@ -582,9 +582,14 @@ const HomeScreen = () => {
                                     {item.region === 'USA Stores' ? '🇺🇸 US' : item.region === 'UK Stores' ? '🇬🇧 UK' : '🇨🇦 CA'}
                                 </Text>
                             </View>
-                            <View style={[styles.tag, { backgroundColor: colors.border }]}>
+                            
+                            <View style={[styles.tag, { backgroundColor: colors.border, overflow: 'hidden' }]}>
                                 <Text style={[styles.tagText, { color: colors.textSecondary }]}>{catName}</Text>
+                                {!userIsPremium && (
+                                    <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+                                )}
                             </View>
+                            
                             <View style={[styles.tag, { backgroundColor: colors.border }]}>
                                 <Text style={[styles.tagText, { color: colors.textSecondary }]}>{getRelativeTime(item.created_at)}</Text>
                             </View>
@@ -645,15 +650,18 @@ const HomeScreen = () => {
                         ) : null}
                     </View>
 
-                    <LinearGradient
-                        colors={[brand.PURPLE + '20', brand.BLUE + '10']}
-                        style={styles.quotaPill}
-                    >
-                        <Text style={[styles.quotaText, { color: brand.PURPLE }]}>
-                            {userIsPremium ? '∞' : getRemainingViews()}
-                        </Text>
-                        <Text style={{ fontSize: 10 }}>⚡</Text>
-                    </LinearGradient>
+                    {!userIsPremium ? (
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('PremiumPaywall')}
+                            style={[styles.premiumHeaderBtn, { backgroundColor: brand.PURPLE + '15' }]}
+                        >
+                            <Text style={[styles.premiumHeaderBtnText, { color: brand.PURPLE }]}>Go Premium 👑</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.premiumHeaderBtn}>
+                            <Text style={{ fontSize: 18 }}>👑</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* ROW 2: CONTROLS (Only show if NOT searching) */}
@@ -736,61 +744,6 @@ const HomeScreen = () => {
                     removeClippedSubviews={Platform.OS === 'android'}
                     ListFooterComponent={() => {
                         if (isLoadingMore) return <ActivityIndicator color={brand.BLUE} style={{ marginVertical: 20 }} />;
-                        if (!userIsPremium && alerts.length >= 4) {
-                            // Compact Paywall with Dual Options
-                            return (
-                                <View style={[styles.paywallCompact, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: 'column', alignItems: 'center', gap: 12 }]}>
-                                    <View style={{ alignItems: 'center', marginBottom: 8 }}>
-                                        <Text style={[styles.paywallText, { color: colors.text, fontWeight: '800', fontSize: 14, textAlign: 'center' }]}>
-                                            🔒 Unlock All {totalAvailable}+ Daily Deals
-                                        </Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6, textAlign: 'center', paddingHorizontal: 25, lineHeight: 16 }}>
-                                            Get unlimited access to all regions, real-time alerts, and synced Premium status.
-                                        </Text>
-                                    </View>
-
-                                    <View style={{ flexDirection: 'row', gap: 6, width: '100%', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 10 }}>
-                                        <TouchableOpacity
-                                            onPress={async () => {
-                                                const result = await purchasePremium('monthly');
-                                                if (!result.success && result.message) {
-                                                    Alert.alert('Error', result.message);
-                                                }
-                                            }}
-                                            style={{ flex: 1, minWidth: 100, backgroundColor: isDarkMode ? '#FFF' : '#111', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            <Text style={{ color: isDarkMode ? '#000' : '#FFF', fontWeight: '800', fontSize: 13 }}>1 Month</Text>
-                                            <Text style={{ color: isDarkMode ? '#666' : '#AAA', fontSize: 10, marginTop: 2 }}>{getPlanPrice('premium_monthly')} / mo</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            onPress={async () => {
-                                                const result = await purchasePremium('yearly');
-                                                if (!result.success && result.message) {
-                                                    Alert.alert('Error', result.message);
-                                                }
-                                            }}
-                                            style={{ flex: 1, minWidth: 100, backgroundColor: '#FFD700', paddingVertical: 10, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            <Text style={{ color: '#000', fontWeight: '900', fontSize: 13 }}>1 Year 👑</Text>
-                                            <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 10, marginTop: 2, fontWeight: '700' }}>{getPlanPrice('premium_yearly')} / yr</Text>
-                                        </TouchableOpacity>
-                                    </View>
-
-                                    {/* LEGAL LINKS (Required for Auto-Renewable Subscriptions on iOS) */}
-                                    {Platform.OS === 'ios' && (
-                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 5 }}>
-                                            <TouchableOpacity
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                onPress={() => navigation.navigate('Profile')}
-                                            >
-                                                <Text style={{ color: colors.textSecondary, fontSize: 10, textDecorationLine: 'underline' }}>Privacy & Terms</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
-                                </View>
-                            );
-                        }
                         return <View style={{ height: 40 }} />;
                     }}
                     ListEmptyComponent={!isLoading ? (
@@ -885,6 +838,10 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    stickyContainer: { paddingHorizontal: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', zIndex: 100 },
+    topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
+    premiumHeaderBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    premiumHeaderBtnText: { fontSize: 12, fontWeight: '800' },
 
     // STICKY HEADER
     stickyContainer: {
