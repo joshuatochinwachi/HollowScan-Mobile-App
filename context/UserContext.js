@@ -705,12 +705,14 @@ export const UserProvider = ({ children }) => {
 
     // Helper to check if the user is eligible for a 3-day free trial
     // Constraint: Account must be < 72 hours old
+    // Default is FALSE — if we cannot confirm account is new, don't show trial UI.
+    // Apple's server-side eligibility is the authoritative gate regardless.
     const isTrialEligible = (() => {
-        if (!user) return true; // New/Guest users start eligible
+        if (!user) return false; // No user object = show plain CTA
         
         // Prefer created_at from DB
         const createdDate = user.created_at || user.created || user.createdAt;
-        if (!createdDate) return true; 
+        if (!createdDate) return false; // Can't confirm account age → don't show trial
 
         const created = new Date(createdDate);
         const now = new Date();

@@ -26,16 +26,14 @@ const SavedScreen = ({ navigation }) => {
         border: 'rgba(0,0,0,0.05)',
     };
 
-    const handleProductPress = async (item) => {
-        if (userIsPremium) {
-            navigation.navigate('ProductDetail', { product: item });
+    const handleProductPress = (item) => {
+        // Free users are redirected to the paywall — saved items do not
+        // grant access to product details. Saving ≠ unlocking.
+        if (!userIsPremium) {
+            navigation.navigate('PremiumPaywall');
             return;
         }
-
-        const result = await trackProductView(item.id);
-        if (result.allowed) {
-            navigation.navigate('ProductDetail', { product: item });
-        }
+        navigation.navigate('ProductDetail', { product: item });
     };
 
     const renderItem = ({ item }) => {

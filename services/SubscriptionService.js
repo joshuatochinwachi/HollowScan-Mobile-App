@@ -256,13 +256,22 @@ class SubscriptionService {
                     try {
                         receipt = await getReceiptIOS();
                     } catch (rErr) {
-                        console.warn('[IAP] getReceiptIOS failed, falling back to token:', rErr);
-                        receipt = purchase.purchaseToken || purchase.transactionReceipt;
+                        console.warn('[IAP] getReceiptIOS failed:', rErr);
+                        receipt = null;
                     }
                 }
-                
+
+                // SAFETY NET: If receipt is still JWS after the getReceiptIOS() fallback,
+                // it means StoreKit 2 is returning JWS for everything on this device.
+                // Sending JWS to /verifyReceipt causes Apple error 21002 (malformed data).
+                // Abort cleanly rather than silently failing.
                 if (!receipt) {
                     console.error('[IAP] ERROR: No receipt data found in purchase object or file!');
+                    return { success: false, message: 'No receipt data available. Please try again.' };
+                }
+                if (receipt.startsWith('eyJ')) {
+                    console.error('[IAP] ERROR: Receipt is still JWS after fallback — cannot use /verifyReceipt. Contact support.');
+                    return { success: false, message: 'Receipt format incompatible. Please contact support.' };
                 }
 
                 endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
