@@ -171,8 +171,10 @@ class SubscriptionService {
     setupPurchaseListeners(onSuccess, onError) {
         this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase) => {
             console.log('[IAP] Purchase updated:', purchase.productId);
-            // v14: transactionReceipt does not exist — use purchaseToken instead
-            const token = purchase.purchaseToken;
+            // On Android, the token is `purchaseToken`.
+            // On iOS (SK1 legacy path), it's `transactionReceipt`.
+            // We check both so this listener fires correctly on both platforms.
+            const token = purchase.purchaseToken || purchase.transactionReceipt;
             if (token) {
                 try {
                     const verificationResponse = await this.verifyWithBackend(purchase);
@@ -187,6 +189,19 @@ class SubscriptionService {
                 } catch (ackErr) {
                     console.warn('[IAP] Ack Error', ackErr);
                     onError && onError(ackErr.message);
+                }
+            } else {
+                // Defensive: on iOS SK2 JWS flow the token fields may be absent initially.
+                // Still attempt verification with whatever is available.
+                console.warn('[IAP] No token found on purchase object. Attempting verification anyway.');
+                try {
+                    const verificationResponse = await this.verifyWithBackend(purchase);
+                    if (verificationResponse && verificationResponse.success) {
+                        await finishTransaction({ purchase, isConsumable: false });
+                        onSuccess && onSuccess(purchase, verificationResponse);
+                    }
+                } catch (fallbackErr) {
+                    console.warn('[IAP] Fallback verification error:', fallbackErr);
                 }
             }
         });

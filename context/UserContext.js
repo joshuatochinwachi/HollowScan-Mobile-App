@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Constants from '../Constants';
@@ -64,7 +65,13 @@ export const UserProvider = ({ children }) => {
                 async (purchase, verificationData) => {
                     console.log('[IAP] Purchase verified successfully');
                     // Inject the verification response directly to update state instantly
-                    await refreshUserStatus(null, verificationData);
+                    const result = await refreshUserStatus(null, verificationData);
+                    
+                    // --- RELIABLE SUCCESS NOTIFICATION ---
+                    // Only alert if the backend actually confirmed premium status
+                    if (result && (result.is_premium || result.isPremium || result.success)) {
+                        Alert.alert("You're Premium! 🚀", "Welcome to HollowScan Premium. Enjoy unlimited access!");
+                    }
                 },
                 (error) => {
                     console.warn('[IAP] Purchase flow error:', error);
@@ -444,11 +451,17 @@ export const UserProvider = ({ children }) => {
                 await AsyncStorage.setItem('daily_views', JSON.stringify(current));
                 setDailyViews(current);
 
+                /* 
+                   DEPRECATED: Quota tracking is no longer used in Freemium blured model.
+                   This call currently returns 405 Method Not Allowed on the server.
+                */
+                /*
                 fetch(`${Constants.API_BASE_URL}/v1/user/views/track`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: user?.id || 'guest', product_id: productId })
-                }).catch(e => console.log('[VIEW] Server track error:', e));
+                }).catch(e => console.log('[LIMIT] Track view error (Safe to ignore):', e));
+                */
             }
 
             refreshUserStatus();
@@ -642,7 +655,7 @@ export const UserProvider = ({ children }) => {
         try {
             SubscriptionService.setCurrentUserId(user.id);
             await SubscriptionService.requestSubscription(sku);
-            return { success: true };
+            return { success: true }; // This just indicates the request was sent to the Store
         } catch (error) {
             return { success: false, message: error.message };
         }
@@ -690,6 +703,22 @@ export const UserProvider = ({ children }) => {
         return false;
     })();
 
+    // Helper to check if the user is eligible for a 3-day free trial
+    // Constraint: Account must be < 72 hours old
+    const isTrialEligible = (() => {
+        if (!user) return true; // New/Guest users start eligible
+        
+        // Prefer created_at from DB
+        const createdDate = user.created_at || user.created || user.createdAt;
+        if (!createdDate) return true; 
+
+        const created = new Date(createdDate);
+        const now = new Date();
+        const diffInHours = Math.abs(now - created) / 36e5;
+        
+        return diffInHours < 72;
+    })();
+
     return (
         <UserContext.Provider
             value={{
@@ -728,7 +757,8 @@ export const UserProvider = ({ children }) => {
                 syncPreferences,
                 purchasePremium,
                 subscriptionPlans,
-                getPlanPrice
+                getPlanPrice,
+                isTrialEligible
             }}
         >
             {children}

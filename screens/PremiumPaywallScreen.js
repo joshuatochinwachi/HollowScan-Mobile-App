@@ -10,7 +10,9 @@ import {
     Image,
     SafeAreaView,
     Platform,
-    Alert
+    Alert,
+    Linking,
+    StatusBar
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,40 +23,63 @@ import SubscriptionService from '../services/SubscriptionService';
 const { width } = Dimensions.get('window');
 
 const PremiumPaywallScreen = ({ navigation }) => {
-    const { isDarkMode, purchasePremium, getPlanPrice, isPremium } = useContext(UserContext);
+    const { isDarkMode, purchasePremium, getPlanPrice, isPremium, isTrialEligible } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
     const [restoring, setRestoring] = useState(false);
 
+    // Compute the real saving % between monthly × 12 vs yearly
+    // getPlanPrice returns a string like '£4.99' — we strip non-numeric chars to parse it
+    const yearlySavingLabel = (() => {
+        try {
+            const monthlyStr = getPlanPrice('premium_monthly');
+            const yearlyStr = getPlanPrice('premium_yearly');
+            // Strip everything except digits and decimal point
+            const monthly = parseFloat(monthlyStr.replace(/[^0-9.]/g, ''));
+            const yearly = parseFloat(yearlyStr.replace(/[^0-9.]/g, ''));
+            if (!monthly || !yearly || monthly <= 0) return 'BEST VALUE';
+            const annualMonthly = monthly * 12;
+            const saving = Math.round(((annualMonthly - yearly) / annualMonthly) * 100);
+            if (saving > 0) return `SAVE ${saving}%`;
+            return 'BEST VALUE';
+        } catch {
+            return 'BEST VALUE';
+        }
+    })();
+
     const brand = Constants.BRAND;
+    
+    // OG Dev Palette: Sophisticated, high-contrast, clean.
     const colors = isDarkMode ? {
-        bg: brand.DARK_BG,
+        bg: '#000000',
+        card: '#1C1C1E',
         text: '#FFFFFF',
-        textSecondary: '#A1A1AA',
-        card: '#161618',
-        border: 'rgba(255,255,255,0.08)'
+        textSecondary: '#8E8E93',
+        border: '#38383A',
+        primary: brand.BLUE,
+        accent: '#5E5CE6',
+        success: '#32D74B'
     } : {
-        bg: '#F8F9FE',
-        text: '#111827',
-        textSecondary: '#6B7280',
+        bg: '#F2F2F7',
         card: '#FFFFFF',
-        border: 'rgba(0,0,0,0.05)'
+        text: '#000000',
+        textSecondary: '#8E8E93',
+        border: '#C6C6C8',
+        primary: brand.BLUE,
+        accent: '#007AFF',
+        success: '#34C759'
     };
 
     const handlePurchase = async (type) => {
         setLoading(true);
         try {
             const result = await purchasePremium(type);
-            if (result.success) {
-                // Subscription successful! UserContext will update state
-                // and navigation is handled by the Root/Auth logic in App.js usually,
-                // but we can also pop or navigate back here.
-                Alert.alert("Success", "Welcome to HollowScan Premium! 🚀");
-                navigation.goBack();
-            } else if (result.message !== 'Purchase cancelled') {
-                Alert.alert("Error", result.message || "Purchase failed");
+            // Alerting is now handled by the verified listener in UserContext
+            // We only need to check if navigation back is needed for errors
+            if (!result.success && result.message && result.message !== 'Purchase cancelled') {
+                Alert.alert("Notice", result.message);
             }
         } catch (e) {
-            Alert.alert("Error", e.message);
+            console.error('[PAYWALL] Purchase error:', e);
         } finally {
             setLoading(false);
         }
@@ -65,164 +90,155 @@ const PremiumPaywallScreen = ({ navigation }) => {
         try {
             const success = await SubscriptionService.restorePurchases();
             if (success) {
-                Alert.alert("Success", "Your purchases have been restored! 🎉");
+                Alert.alert("Success", "Your Premium access has been restored! 🚀");
                 navigation.goBack();
             } else {
-                Alert.alert("Info", "No active subscriptions found to restore.");
+                Alert.alert("Restore", "We couldn't find an active subscription associated with this account.");
             }
         } catch (e) {
-            Alert.alert("Error", "Restore failed: " + e.message);
+            Alert.alert("Error", "Could not complete restore: " + e.message);
         } finally {
             setRestoring(false);
         }
     };
 
-    const PerkItem = ({ icon, title, desc }) => (
-        <View style={styles.perkContainer}>
-            <View style={[styles.perkIcon, { backgroundColor: brand.PURPLE + '15' }]}>
-                <Text style={{ fontSize: 22 }}>{icon}</Text>
+    const FeatureRow = ({ title, desc }) => (
+        <View style={styles.featureRow}>
+            <View style={[styles.checkCircle, { backgroundColor: colors.success + '20' }]}>
+                <Text style={{ color: colors.success, fontSize: 12, fontWeight: '900' }}>✓</Text>
             </View>
-            <View style={styles.perkText}>
-                <Text style={[styles.perkTitle, { color: colors.text }]}>{title}</Text>
-                <Text style={[styles.perkDesc, { color: colors.textSecondary }]}>{desc}</Text>
+            <View style={{ flex: 1 }}>
+                <Text style={[styles.featureText, { color: colors.text }]}>{title}</Text>
+                {desc && <Text style={[styles.featureDesc, { color: colors.textSecondary }]}>{desc}</Text>}
             </View>
         </View>
     );
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Header Section */}
-                <View style={styles.header}>
-                    <TouchableOpacity 
-                        style={styles.closeButton} 
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={{ fontSize: 24, color: colors.textSecondary }}>✕</Text>
-                    </TouchableOpacity>
-                    
-                    <LinearGradient
-                        colors={[brand.PURPLE, brand.BLUE]}
-                        style={styles.logoBadge}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <Text style={styles.logoEmoji}>👑</Text>
-                    </LinearGradient>
-                    
+                
+                {/* Close Button - Clean & Minimal */}
+                <TouchableOpacity 
+                    style={styles.closeBtn} 
+                    onPress={() => navigation.goBack()}
+                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                    <Text style={[styles.closeIcon, { color: colors.textSecondary }]}>✕</Text>
+                </TouchableOpacity>
+
+                {/* Hero Branding */}
+                <View style={styles.hero}>
+                    <Text style={[styles.kicker, { color: colors.accent }]}>UNLIMITED ACCESS</Text>
                     <Text style={[styles.title, { color: colors.text }]}>HollowScan Premium</Text>
                     <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        Unlock 1,000+ daily high-profit deals and global marketplace coverage.
+                        Join thousands of professional resellers using real-time data to dominate the market.
                     </Text>
                 </View>
 
-                {/* Benefits Section */}
-                <View style={styles.benefits}>
-                    <PerkItem 
-                        icon="🚀" 
-                        title="Infinite Deal Access" 
-                        desc="No more daily limits. See every profitable drop as it happens." 
-                    />
-                    <PerkItem 
-                        icon="🌍" 
-                        title="Global Coverage" 
-                        desc="Full access to US, UK, and CA deals with real-time currency sync." 
-                    />
-                    <PerkItem 
-                        icon="⚡" 
-                        title="Instant ROI Alerts" 
-                        desc="Priority push notifications for the highest margin opportunities." 
-                    />
-                    <PerkItem 
-                        icon="🔒" 
-                        title="3-Day Free Trial" 
-                        desc="Start today for $0.00. Absolute transparency, cancel anytime." 
-                    />
+                {/* Feature List - Professional Density */}
+                <View style={styles.featuresCard}>
+                    <FeatureRow title="Global Arbitrage Feed" desc="Infinite scroll of deals from USA, UK, and CA." />
+                    <FeatureRow title="Zero Restrictions" desc="Remove all blurs and viewing limits permanently." />
+                    <FeatureRow title="Priority Push Alerts" desc="Be the first to know when high-ROI items drop." />
+                    <FeatureRow title="Deep Market Analytics" desc="See historical pricing and store inventory metrics." />
                 </View>
 
-                {/* Action Section */}
-                <View style={styles.actions}>
+                {/* Pricing Plans */}
+                <View style={styles.pricingContainer}>
                     {loading ? (
-                        <ActivityIndicator size="large" color={brand.BLUE} style={{ marginVertical: 30 }} />
+                        <ActivityIndicator size="large" color={colors.accent} style={{ marginVertical: 40 }} />
                     ) : (
-                        <View style={styles.planContainer}>
-                            {/* Monthly Plan - High Conversion + Trial */}
+                        <>
+                            {/* Monthly Plan - Conditional Trial Eligibility */}
                             <TouchableOpacity 
-                                style={[styles.planCard, { borderColor: brand.BLUE, backgroundColor: colors.card }]}
+                                style={[styles.planCard, { backgroundColor: colors.card, borderColor: isTrialEligible ? colors.accent : colors.border }]}
                                 onPress={() => handlePurchase('monthly')}
-                                activeOpacity={0.8}
+                                activeOpacity={0.9}
                             >
                                 <View style={styles.planHeader}>
-                                    <Text style={[styles.planTitle, { color: colors.text }]}>Monthly Premium</Text>
-                                    <View style={[styles.trialBadge, { backgroundColor: brand.BLUE }]}>
-                                        <Text style={styles.trialBadgeText}>3 DAYS FREE</Text>
+                                    <View>
+                                        <Text style={[styles.planName, { color: colors.text }]}>Monthly</Text>
+                                        <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_monthly')}<Text style={styles.perMonth}>/mo</Text></Text>
                                     </View>
+                                    {isTrialEligible && (
+                                        <View style={[styles.trialBadge, { backgroundColor: colors.accent }]}>
+                                            <Text style={styles.trialBadgeText}>3 DAYS FREE</Text>
+                                        </View>
+                                    )}
                                 </View>
-                                <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_monthly')}<Text style={styles.planPeriod}> / month</Text></Text>
-                                <Text style={[styles.planInfo, { color: colors.textSecondary }]}>Try full access for free. Cancel anytime before the trial ends.</Text>
                                 
                                 <LinearGradient
-                                    colors={[brand.BLUE, brand.PURPLE]}
-                                    style={styles.planActionBtn}
+                                    colors={isTrialEligible ? [colors.accent, '#833AB4'] : [colors.card, colors.card]}
+                                    style={styles.actionBtn}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                 >
-                                    <Text style={styles.planActionText}>Start Free Trial</Text>
+                                    <Text style={[styles.actionBtnText, { color: isTrialEligible ? '#FFF' : colors.accent }]}>
+                                        {isTrialEligible ? 'Start Free Trial' : 'Get Started'}
+                                    </Text>
                                 </LinearGradient>
+                                <Text style={[styles.billingSubtext, { color: colors.textSecondary }]}>
+                                    {isTrialEligible ? 'Then regular price. Cancel anytime' : 'Billed monthly. Cancel anytime.'}
+                                </Text>
                             </TouchableOpacity>
 
-                            {/* Yearly Plan - Direct Pay + Savings */}
+                            {/* Yearly Plan - The "Pro" Choice */}
                             <TouchableOpacity 
-                                style={[styles.planCard, { borderColor: colors.border, backgroundColor: colors.card, marginTop: 16 }]}
+                                style={[styles.planCard, { backgroundColor: colors.card, borderColor: colors.border, marginTop: 12 }]}
                                 onPress={() => handlePurchase('yearly')}
-                                activeOpacity={0.8}
+                                activeOpacity={0.9}
                             >
                                 <View style={styles.planHeader}>
-                                    <Text style={[styles.planTitle, { color: colors.text }]}>Yearly Access</Text>
-                                    <View style={[styles.saveBadge, { backgroundColor: '#10B981' }]}>
-                                        <Text style={styles.saveBadgeText}>BEST VALUE 👑</Text>
+                                    <View>
+                                        <Text style={[styles.planName, { color: colors.text }]}>Yearly Pro</Text>
+                                        <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_yearly')}<Text style={styles.perMonth}>/yr</Text></Text>
+                                    </View>
+                                    <View style={[styles.valueBadge, { backgroundColor: colors.success }]}>
+                                        <Text style={styles.valueBadgeText}>{yearlySavingLabel}</Text>
                                     </View>
                                 </View>
-                                <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_yearly')}<Text style={styles.planPeriod}> / year</Text></Text>
-                                <Text style={[styles.planInfo, { color: colors.textSecondary }]}>Best for professionals. Direct yearly access with no recurring monthly trials.</Text>
-
-                                <View style={[styles.planActionBtn, { backgroundColor: isDarkMode ? '#222' : '#F3F4F6', borderWidth: 0 }]}>
-                                    <Text style={[styles.planActionText, { color: colors.text }]}>Subscribe Yearly</Text>
+                                
+                                <View style={[styles.actionBtn, { backgroundColor: isDarkMode ? '#2C2C2E' : '#E5E5EA' }]}>
+                                    <Text style={[styles.actionBtnText, { color: colors.text }]}>Subscribe Yearly</Text>
                                 </View>
+                                <Text style={[styles.billingSubtext, { color: colors.textSecondary }]}>
+                                    Direct access. Best value for serious traders.
+                                </Text>
                             </TouchableOpacity>
-                        </View>
+                        </>
                     )}
+                </View>
 
-                    {/* Footer Links */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity onPress={handleRestore} disabled={restoring}>
-                            {restoring ? (
-                                <ActivityIndicator size="small" color={colors.textSecondary} />
-                            ) : (
-                                <Text style={[styles.footerLink, { color: colors.textSecondary }]}>Restore Purchase</Text>
-                            )}
-                        </TouchableOpacity>
-                        
-                        <View style={styles.dot} />
-                        
-                        <TouchableOpacity onPress={() => Linking.openURL('https://hollowscan.com/privacy')}>
-                            <Text style={[styles.footerLink, { color: colors.textSecondary }]}>Privacy Policy</Text>
-                        </TouchableOpacity>
+                {/* Footer Section */}
+                <View style={styles.footer}>
+                    <TouchableOpacity onPress={handleRestore} disabled={restoring}>
+                        <Text style={[styles.footerBtnText, { color: colors.textSecondary }]}>
+                            {restoring ? 'Restoring...' : 'Restore Purchases'}
+                        </Text>
+                    </TouchableOpacity>
 
-                        <View style={styles.dot} />
-
-                        <TouchableOpacity onPress={() => Linking.openURL('https://hollowscan.com/terms')}>
-                            <Text style={[styles.footerLink, { color: colors.textSecondary }]}>Terms</Text>
+                    <View style={styles.legalLinks}>
+                        {Platform.OS === 'ios' && (
+                            <>
+                                <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                                    <Text style={[styles.legalText, { color: colors.textSecondary }]}>Terms of Use (EULA)</Text>
+                                </TouchableOpacity>
+                                <Text style={[styles.dot, { color: colors.textSecondary }]}>•</Text>
+                            </>
+                        )}
+                        <TouchableOpacity onPress={() => Linking.openURL('https://www.hollowscan.com/privacy-policy')}>
+                            <Text style={[styles.legalText, { color: colors.textSecondary }]}>Privacy Policy</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity 
-                        style={styles.maybeLater} 
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={[styles.maybeLaterText, { color: colors.textSecondary }]}>Maybe later, I'll stick to limited viewing</Text>
-                    </TouchableOpacity>
+                    
+                    <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
+                        Subscriptions will be charged to your card through your {Platform.OS === 'ios' ? 'iTunes' : 'Google Play'} account. 
+                        Your subscription will automatically renew unless cancelled at least 24 hours before the end of the current period.
+                    </Text>
                 </View>
+
             </ScrollView>
         </SafeAreaView>
     );
@@ -230,58 +246,37 @@ const PremiumPaywallScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 },
-    header: { alignItems: 'center', marginBottom: 40, marginTop: 20 },
-    closeButton: { alignSelf: 'flex-start', padding: 8, marginBottom: 10 },
-    logoBadge: {
-        width: 70,
-        height: 70,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20,
-        elevation: 10,
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 5 }
-    },
-    logoEmoji: { fontSize: 35 },
-    title: { fontSize: 30, fontWeight: '900', marginBottom: 12, textAlign: 'center' },
-    subtitle: { fontSize: 16, textAlign: 'center', lineHeight: 24, paddingHorizontal: 20 },
-    benefits: { marginBottom: 40 },
-    perkContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    perkIcon: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    perkText: { flex: 1 },
-    perkTitle: { fontSize: 17, fontWeight: '700', marginBottom: 4 },
-    perkDesc: { fontSize: 14, lineHeight: 20 },
-    actions: { width: '100%' },
-    planContainer: { width: '100%', marginBottom: 20 },
-    planCard: { 
-        width: '100%', 
-        padding: 20, 
-        borderRadius: 20, 
-        borderWidth: 2, 
-        elevation: 4,
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 }
-    },
-    planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-    planTitle: { fontSize: 18, fontWeight: '800' },
-    planPrice: { fontSize: 24, fontWeight: '900', marginBottom: 8 },
-    planPeriod: { fontSize: 14, fontWeight: '600', opacity: 0.6 },
-    planInfo: { fontSize: 13, lineHeight: 18, marginBottom: 20 },
-    trialBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    trialBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
-    saveBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-    saveBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '900' },
-    planActionBtn: { height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    planActionText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
-    footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 30 },
-    footerLink: { fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
-    dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#A1A1AA', marginHorizontal: 10 },
-    maybeLater: { alignSelf: 'center', padding: 10 },
-    maybeLaterText: { fontSize: 14, fontWeight: '600', textDecorationLine: 'underline', opacity: 0.7 }
+    scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 60 },
+    closeBtn: { position: 'absolute', top: 20, left: 24, zIndex: 10 },
+    closeIcon: { fontSize: 20, fontWeight: '300' },
+    hero: { alignItems: 'center', marginBottom: 32 },
+    kicker: { fontSize: 13, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
+    title: { fontSize: 28, fontWeight: '800', marginBottom: 12, textAlign: 'center', letterSpacing: -0.5 },
+    subtitle: { fontSize: 16, textAlign: 'center', lineHeight: 22, opacity: 0.8 },
+    featuresCard: { marginBottom: 32, paddingVertical: 10 },
+    featureRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },
+    checkCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', marginRight: 14, marginTop: 2 },
+    featureText: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+    featureDesc: { fontSize: 14, lineHeight: 18 },
+    pricingContainer: { width: '100%', marginBottom: 40 },
+    planCard: { padding: 20, borderRadius: 24, borderWidth: 1.5 },
+    planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+    planName: { fontSize: 16, fontWeight: '600', marginBottom: 4, opacity: 0.6 },
+    planPrice: { fontSize: 26, fontWeight: '800' },
+    perMonth: { fontSize: 16, fontWeight: '500', opacity: 0.5 },
+    trialBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    trialBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+    valueBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    valueBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+    actionBtn: { height: 56, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    actionBtnText: { fontSize: 17, fontWeight: '800' },
+    billingSubtext: { textAlign: 'center', fontSize: 12, opacity: 0.7 },
+    footer: { alignItems: 'center' },
+    footerBtnText: { fontSize: 14, fontWeight: '700', marginBottom: 20 },
+    legalLinks: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+    legalText: { fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
+    dot: { marginHorizontal: 8 },
+    disclaimer: { fontSize: 11, textAlign: 'center', lineHeight: 16, opacity: 0.6, paddingHorizontal: 10 }
 });
 
 export default PremiumPaywallScreen;
