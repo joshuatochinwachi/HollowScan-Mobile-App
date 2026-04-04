@@ -211,7 +211,12 @@ export const UserProvider = ({ children }) => {
             const data = await response.json();
             if (data.success && data.user) {
                 setNeedsOnboarding(true);
-                await updateUser(data.user);
+                // Ensure a created_at date exists for trial calculation
+                const userWithDate = {
+                    ...data.user,
+                    created_at: data.user.created_at || new Date().toISOString()
+                };
+                await updateUser(userWithDate);
                 return { success: true };
             } else {
                 return { success: false, message: data.detail || 'Signup failed' };
@@ -708,6 +713,9 @@ export const UserProvider = ({ children }) => {
     // Default is FALSE — if we cannot confirm account is new, don't show trial UI.
     // Apple's server-side eligibility is the authoritative gate regardless.
     const isTrialEligible = (() => {
+        // High confidence signal: onboarding is only true for brand new accounts
+        if (needsOnboarding) return true;
+        
         if (!user) return false; // No user object = show plain CTA
         
         // Prefer created_at from DB
