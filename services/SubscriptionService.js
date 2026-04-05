@@ -131,19 +131,28 @@ class SubscriptionService {
                         },
                     },
                 });
-            } else {
-                // iOS
-                await requestPurchase({
-                    type: 'subs',
-                    request: {
-                        apple: { sku },
-                    },
-                });
+                // iOS (Modern v12+ request structure)
+                console.log(`[IAP] Sending Apple request for sku: ${sku}`);
+                try {
+                    await requestPurchase({
+                        sku: sku,
+                        andSubstitute: false // Modern parameter for iOS
+                    });
+                    console.log('[IAP] Native Apple request sent to bridge.');
+                } catch (nativeErr) {
+                    console.error('[IAP] Native Apple bridge error:', nativeErr);
+                    throw nativeErr;
+                }
             }
         } catch (err) {
-            console.warn('[IAP] Error requesting subscription', err.code, err.message);
-            if (err.code === 'E_USER_CANCELLED') throw new Error('Purchase cancelled');
-            throw err;
+            const errorCode = err?.code || 'UNKNOWN';
+            const errorMsg = err?.message || 'No message';
+            console.warn(`[IAP] Full Error Trace [${sku}]:`, { code: errorCode, message: errorMsg, stack: err?.stack });
+            
+            if (errorCode === 'E_USER_CANCELLED' || errorMsg.includes('cancelled')) {
+                throw new Error('Purchase cancelled');
+            }
+            throw new Error(`Store Error [${errorCode}]: ${errorMsg}`);
         }
     }
 

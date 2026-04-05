@@ -82,14 +82,20 @@ const PremiumPaywallScreen = ({ navigation }) => {
     const handlePurchase = async (type) => {
         setLoading(true);
         try {
+            console.log(`[PAYWALL] Starting purchase flow for: ${type}`);
             const result = await purchasePremium(type);
-            // Alerting is now handled by the verified listener in UserContext
-            // We only need to check if navigation back is needed for errors
-            if (!result.success && result.message && result.message !== 'Purchase cancelled') {
-                Alert.alert("Notice", result.message);
+            console.log(`[PAYWALL] Bridge result for ${type}:`, result);
+            
+            if (!result.success) {
+                if (result.message && result.message !== 'Purchase cancelled') {
+                    Alert.alert("Payment Issue", result.message);
+                } else {
+                    console.log('[PAYWALL] Purchase was cancelled by user');
+                }
             }
         } catch (e) {
-            console.error('[PAYWALL] Purchase error:', e);
+            console.error('[PAYWALL] Unexpected Exception:', e);
+            Alert.alert("Error", "An unexpected error occurred during purchase: " + (e.message || 'Unknown Error'));
         } finally {
             setLoading(false);
         }
@@ -152,7 +158,7 @@ const PremiumPaywallScreen = ({ navigation }) => {
                     <FeatureRow title="Global Arbitrage Feed" desc="Infinite scroll of deals from USA, UK, and CA." />
                     <FeatureRow title="Zero Restrictions" desc="Remove all blurs and viewing limits permanently." />
                     <FeatureRow title="Priority Push Alerts" desc="Be the first to know when high-ROI items drop." />
-                    <FeatureRow title="Deep Market Analytics" desc="See historical pricing and store inventory metrics." />
+                    <FeatureRow title="Deep Market Analytics" desc="See product pricing and store inventory metrics." />
                 </View>
 
                 {/* Pricing Plans */}
