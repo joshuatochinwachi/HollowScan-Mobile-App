@@ -327,8 +327,11 @@ const ProfileScreen = () => {
                                         if (!expiryStr) return '';
                                         
                                         const end = new Date(expiryStr);
+                                        // Safety check for invalid dates
+                                        if (isNaN(end.getTime())) return 'Premium Active';
+
                                         const now = new Date();
-                                        const diffTime = end - now;
+                                        const diffTime = end.getTime() - now.getTime();
                                         
                                         if (diffTime <= 0) return 'Expiring Soon';
 

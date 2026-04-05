@@ -191,9 +191,9 @@ const HomeScreen = () => {
                 return combined;
             });
             newProducts.forEach(product => {
-                // Apply User Preferences to Foreground Notifications
-                const prefs = user?.notification_preferences || {
-                    enabled: true,
+                // Apply User Preferences to Foreground Notifications (SAFE CHECK)
+                const prefs = user?.notification_preferences || { 
+                    enabled: true, 
                     regions: ["USA Stores", "UK Stores", "Canada Stores"],
                     categories: [],
                     min_discount_percent: 0
@@ -451,8 +451,8 @@ const HomeScreen = () => {
 
         if (!hasImage && !hasLinks && !hasAnyPrice) return null;
 
-        // Calculate ROI percentage
-        const roiPercent = (hasResell && priceVal > 0)
+        // Calculate ROI percentage (MATH SAFETY CHECK)
+        const roiPercent = (hasResell && Number.isFinite(priceVal) && priceVal > 0)
             ? Math.round(((resellVal - priceVal) / priceVal) * 100)
             : 0;
 
@@ -594,14 +594,20 @@ const HomeScreen = () => {
                         </View>
                     </View>
 
-                    {/* LOCK OVERLAY */}
+                    {/* LOCK OVERLAY - PERFORMANCE OPTIMIZED */}
                     {item.is_locked && (
-                        <BlurView intensity={80} tint={isDarkMode ? 'dark' : 'light'} style={styles.lockOverlay}>
+                        <View style={[styles.lockOverlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)' }]}>
+                            <LinearGradient
+                                colors={isDarkMode 
+                                    ? ['rgba(22,22,24,0.7)', 'rgba(22,22,24,0.95)'] 
+                                    : ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.95)']}
+                                style={StyleSheet.absoluteFill}
+                            />
                             <View style={styles.lockCenter}>
                                 <Text style={{ fontSize: 24 }}>🔒</Text>
                                 <Text style={[styles.lockText, { color: colors.text }]}>Premium</Text>
                             </View>
-                        </BlurView>
+                        </View>
                     )}
                 </TouchableOpacity>
             </Animated.View>
