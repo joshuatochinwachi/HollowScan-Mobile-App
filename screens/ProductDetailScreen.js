@@ -20,12 +20,16 @@ const ProductDetailScreen = ({ route, navigation }) => {
     const brand = Constants.BRAND;
 
     // --- PREMIUM GATE CHECK ---
-    // If the product is locked and user is NOT premium, redirect to paywall.
-    // This handles both deep links and direct navigations.
+    // This is the "Teaser" redirect logic. 
+    // If a user is FREE, they should NEVER see the product details.
+    // This handles: (1) Push Notifications (2) Deep Links (3) Manual Navigation
     React.useEffect(() => {
-        if (product && product.is_locked && !userIsPremium) {
-            console.log('[GATE] Access denied to locked product. Redirecting to paywall.');
-            // Replace ensures they can't just go 'back' to the locked product
+        // We check for product existence and user status
+        // Even if product.is_locked is true, we ONLY redirect if user is not premium.
+        // If a product comes from a notification (productId), 'product' becomes populated after fetch.
+        if (product && !userIsPremium) {
+            console.log('[GATE] Free user detected on ProductDetail. Redirecting to Paywall...');
+            // navigation.replace removes the detail screen from history so they can't 'Go Back' into it.
             navigation.replace('PremiumPaywall');
         }
     }, [product, userIsPremium, navigation]);
