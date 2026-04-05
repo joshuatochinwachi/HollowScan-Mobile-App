@@ -14,6 +14,12 @@ export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const userRef = useRef(null);
 
+    // --- CIRCUIT BREAKER ---
+    // Prevent infinite network loops by throttling server checks
+    const lastUserStatusCheckTime = useRef(0);
+    const lastTelegramCheckTime = useRef(0);
+    const CHECK_THROTTLE_MS = 30000; // 30 second cooldown
+
     // Keep userRef in sync with state
     useEffect(() => {
         userRef.current = user;
@@ -165,8 +171,8 @@ export const UserProvider = ({ children }) => {
                     setUser(userData);
                     SubscriptionService.setCurrentUserId(userData.id); // ← FIX: set user ID on app load
                     registerForPushNotifications(userData.id);
-                    checkTelegramStatus(userData.id);
-                    setTimeout(() => refreshUserStatus(userData), 1000);
+                    checkTelegramStatus(userData.id, true); // Force initial check
+                    setTimeout(() => refreshUserStatus(userData, null, true), 1000); // Force initial refresh
                 } else {
                     setUser(null);
                 }
@@ -237,7 +243,7 @@ export const UserProvider = ({ children }) => {
             });
             const data = await response.json();
             if (data.success) {
-                await refreshUserStatus();
+                await refreshUserStatus(null, null, true); // Force update after verification
             }
             return { success: data.success, message: data.message };
         } catch (error) {
@@ -294,15 +300,23 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const refreshUserStatus = async (passedUser = null, injectedData = null) => {
+    const refreshUserStatus = async (passedUser = null, injectedData = null, force = false) => {
         const targetUser = passedUser || userRef.current;
         if (!targetUser?.id && !injectedData) return;
+
+        // --- THROTTLE CHECK ---
+        const now = Date.now();
+        if (!force && !injectedData && (now - lastUserStatusCheckTime.current < CHECK_THROTTLE_MS)) {
+            console.log('[USER] Status refresh throttled (checked recently)');
+            return userRef.current;
+        }
 
         try {
             const userIdBeforeFetch = targetUser?.id;
             let data = injectedData;
             
             if (!data) {
+                lastUserStatusCheckTime.current = now; // Mark attempt
                 const response = await fetch(`${Constants.API_BASE_URL}/v1/user/status?user_id=${targetUser.id}`);
                 data = await response.json();
             } else {
@@ -559,9 +573,17 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const checkTelegramStatus = async (specificUserId = null) => {
+    const checkTelegramStatus = async (specificUserId = null, force = false) => {
         const idToCheck = specificUserId || user?.id;
         if (!idToCheck) return;
+
+        // --- THROTTLE CHECK ---
+        const now = Date.now();
+        if (!force && (now - lastTelegramCheckTime.current < CHECK_THROTTLE_MS)) {
+            console.log('[TELEGRAM] Status check throttled');
+            return { throttled: true };
+        }
+        lastTelegramCheckTime.current = now;
 
         console.log(`[DEBUG] checkTelegramStatus for ID: '${idToCheck}'`);
 
@@ -593,13 +615,13 @@ export const UserProvider = ({ children }) => {
                 setTelegramLinked(true);
                 setIsPremiumTelegram(data.is_premium || false);
                 setPremiumUntil(data.premium_until || null);
-                refreshUserStatus();
+                // Removed recursive refreshUserStatus() to stop infinite loops
                 return { linked: true, isPremium: data.is_premium };
             } else {
                 setTelegramLinked(false);
                 setIsPremiumTelegram(false);
                 setPremiumUntil(null);
-                refreshUserStatus();
+                // Removed recursive refreshUserStatus()
                 return { linked: false };
             }
         } catch (error) {
@@ -607,7 +629,7 @@ export const UserProvider = ({ children }) => {
             setTelegramLinked(false);
             setIsPremiumTelegram(false);
             setPremiumUntil(null);
-            refreshUserStatus();
+            // Removed recursive refreshUserStatus()
             return { linked: false, error: error.message };
         }
     };

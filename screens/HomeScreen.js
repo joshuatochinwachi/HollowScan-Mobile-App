@@ -256,11 +256,12 @@ const HomeScreen = () => {
 
         await Promise.all([
             fetchCategories(),
-            fetchUserStatus(),
+            fetchUserStatus(), // Updates local quota state
             fetchAlerts(0, true, null, forceRefresh),
-            // Background sync context to catch expiry even if Profile isn't opened
-            checkTelegramStatus(),
-            refreshUserStatus(),
+            // REMOVED redundant background sync calls from feed fetch to stop loops.
+            // Context logic now handles these on a throttled schedule (UserContext.js).
+            // checkTelegramStatus(), 
+            // refreshUserStatus(),
             fetchAnnouncement()
         ]);
 
