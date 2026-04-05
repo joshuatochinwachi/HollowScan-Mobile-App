@@ -27,6 +27,7 @@ class SubscriptionService {
         this.purchaseErrorSubscription = null;
         this.currentUserId = null;
         this.isConnected = false;
+        this.isRequesting = false; // ← SINGLE-REQUEST GUARD
     }
 
     setCurrentUserId(userId) {
@@ -90,36 +91,29 @@ class SubscriptionService {
 
     async requestSubscription(sku) {
         if (!this.isConnected) {
-            throw new Error('IAP Connection not initialized. Please try again in safe mode.');
+            throw new Error('Store connection is initializing. Please try again in 5 seconds.');
         }
+
+        if (this.isRequesting) {
+            console.log('[IAP] Blocked concurrent request for:', sku);
+            return; 
+        }
+
         try {
-            console.log('[IAP] Requesting subscription for:', sku);
+            this.isRequesting = true;
+            console.log('[IAP] Locking bridge for request:', sku);
 
             if (Platform.OS === 'android') {
-                // Fetch the specific product to get its offerToken
                 const products = await fetchProducts({ skus: [sku], type: 'subs' });
-                console.log(`[IAP] Products returned for ${sku}:`, products?.length || 0);
-                
-                if (products?.length > 0) {
-                    products.forEach(p => console.log(`[IAP] Found Product: ${p.id}, type: ${p.type}`));
-                }
-
                 const product = products?.find(p => p.id === sku);
 
                 if (!product) {
-                    console.error(`[IAP] CRITICAL: Product ${sku} not found in Google Play.`);
-                    throw new Error(`Product "${sku}" not found. Possible causes:
-1. Product ID mismatch (check Play Console)
-2. Base Plan not "Activated"
-3. Account region mismatch
-4. App not uploaded to a track (internal/alpha/beta)`);
+                    throw new Error(`Product "${sku}" not found in Google Play.`);
                 }
 
-                // offerToken is required for Android subscriptions in v14
                 const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
-
                 if (!offerToken) {
-                    throw new Error(`Offer token not found for ${sku}. Ensure you have an "Activated" Base Plan in the Play Console.`);
+                    throw new Error(`Offer token not found for ${sku}.`);
                 }
 
                 await requestPurchase({
@@ -131,28 +125,33 @@ class SubscriptionService {
                         },
                     },
                 });
+            } else {
                 // iOS (Modern v12+ request structure)
                 console.log(`[IAP] Sending Apple request for sku: ${sku}`);
-                try {
-                    await requestPurchase({
-                        sku: sku,
-                        andSubstitute: false // Modern parameter for iOS
-                    });
-                    console.log('[IAP] Native Apple request sent to bridge.');
-                } catch (nativeErr) {
-                    console.error('[IAP] Native Apple bridge error:', nativeErr);
-                    throw nativeErr;
-                }
+                await requestPurchase({
+                    sku: sku,
+                    andSubstitute: false 
+                });
+                console.log('[IAP] Native Apple request sent to bridge.');
             }
         } catch (err) {
             const errorCode = err?.code || 'UNKNOWN';
             const errorMsg = err?.message || 'No message';
-            console.warn(`[IAP] Full Error Trace [${sku}]:`, { code: errorCode, message: errorMsg, stack: err?.stack });
+            console.warn(`[IAP] Request Error [${sku}]:`, { code: errorCode, message: errorMsg });
             
             if (errorCode === 'E_USER_CANCELLED' || errorMsg.includes('cancelled')) {
                 throw new Error('Purchase cancelled');
             }
-            throw new Error(`Store Error [${errorCode}]: ${errorMsg}`);
+            if (errorCode === 'E_USER_VERIFICATION_REQUIRED' || errorMsg.includes('verification')) {
+                throw new Error('Apple Account Verification required. Check your iOS Settings.');
+            }
+            throw new Error(`Store Error: ${errorMsg}`);
+        } finally {
+            // Safety unlock after 2 seconds
+            setTimeout(() => {
+                this.isRequesting = false;
+                console.log('[IAP] Unlocking bridge.');
+            }, 2000);
         }
     }
 
@@ -257,40 +256,35 @@ class SubscriptionService {
         }
 
         try {
-            console.log(`[IAP] Verifying with backend for user: ${this.currentUserId} (OS: ${Platform.OS})`);
+            console.log(`[IAP][STEP 1] Verifying with backend for user: ${this.currentUserId} (OS: ${Platform.OS})`);
             
             let endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
             let requestBody = {};
             
             if (Platform.OS === 'ios') {
                 // iOS Apple Pay flow
-                console.log('[IAP] Purchase object keys:', Object.keys(purchase));
+                console.log(`[IAP][iOS] Checking for receipt on Product: ${purchase.productId}`);
                 
-                // v14+ SK2 returns JWS (eyJ...) by default which legacy /verifyReceipt rejects.
-                // We fetch the legacy Base64 receipt string explicitly.
                 let receipt = purchase.transactionReceipt;
                 
                 if (!receipt || receipt.startsWith('eyJ')) {
-                    console.log('[IAP] JWS detected or receipt missing, fetching legacy receipt...');
+                    console.log('[IAP][iOS] JWS detected or receipt missing, fetching legacy receipt...');
                     try {
                         receipt = await getReceiptIOS();
                     } catch (rErr) {
-                        console.warn('[IAP] getReceiptIOS failed:', rErr);
+                        console.warn('[IAP][iOS] getReceiptIOS failed:', rErr);
                         receipt = null;
                     }
                 }
 
-                // SAFETY NET: If receipt is still JWS after the getReceiptIOS() fallback,
-                // it means StoreKit 2 is returning JWS for everything on this device.
-                // Sending JWS to /verifyReceipt causes Apple error 21002 (malformed data).
-                // Abort cleanly rather than silently failing.
                 if (!receipt) {
-                    console.error('[IAP] ERROR: No receipt data found in purchase object or file!');
+                    console.error('[IAP][iOS] ERROR: No receipt data found!');
                     return { success: false, message: 'No receipt data available. Please try again.' };
                 }
+                
                 if (receipt.startsWith('eyJ')) {
-                    console.error('[IAP] ERROR: Receipt is still JWS after fallback — cannot use /verifyReceipt. Contact support.');
-                    return { success: false, message: 'Receipt format incompatible. Please contact support.' };
+                    console.error('[IAP][iOS] ERROR: Receipt is still JWS after fallback!');
+                    return { success: false, message: 'Receipt format incompatible.' };
                 }
 
                 endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
@@ -300,30 +294,34 @@ class SubscriptionService {
                     product_id: purchase.productId,
                 };
             } else {
-                // Android Google Play flow (Untouched)
+                // Android Google Play flow
+                console.log(`[IAP][ANDROID] Verifying Token on Product: ${purchase.productId}`);
                 endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
                 requestBody = {
                     user_id: this.currentUserId,
-                    purchase_token: purchase.purchaseToken, // Android gives us purchaseToken
+                    purchase_token: purchase.purchaseToken,
                     product_id: purchase.productId,
                 };
             }
 
+            console.log(`[IAP][STEP 2] POSTing to: ${endpointUrl}`);
             const response = await fetch(endpointUrl, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'apikey': process.env.EXPO_PUBLIC_SUPABASE_KEY,
-                    'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_KEY}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
             });
 
+            console.log(`[IAP][STEP 3] Backend Response Status: ${response.status}`);
             const data = await response.json();
-            console.log('[IAP] Backend verification result:', data.success);
+            console.log('[IAP][STEP 4] Backend verification result:', data.success ? 'SUCCESS' : 'FAILED');
+            
+            if (!data.success) {
+                console.warn('[IAP][DEBUG] Backend error message:', data.message || data.detail || 'No detail');
+            }
+            
             return data;
         } catch (err) {
-            console.error('[IAP] Backend verification error', err);
+            console.error('[IAP][EXCEPTION] Backend verification fatal error:', err);
             return { success: false, message: err.message };
         }
     }

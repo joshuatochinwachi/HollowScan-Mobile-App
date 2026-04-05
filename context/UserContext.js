@@ -53,38 +53,41 @@ export const UserProvider = ({ children }) => {
             await loadTheme();
             await loadRegion();
             setupNotificationHandler();
+            setIsLoading(false); // UI is now interactive
 
-            // --- IAP Initialization ---
-            await SubscriptionService.initialize();
-
-            // --- FIX 3: Startup Purchase Recovery ---
-            // This catches any unacknowledged purchases from a previous session
-            try {
-                console.log('[IAP] Running startup recovery check...');
-                await SubscriptionService.restorePurchases();
-            } catch (recoveryErr) {
-                console.warn('[IAP] Startup recovery failed:', recoveryErr);
-            }
-
-            await fetchIAPPlans();
-            SubscriptionService.setupPurchaseListeners(
-                async (purchase, verificationData) => {
-                    console.log('[IAP] Purchase verified successfully');
-                    // Inject the verification response directly to update state instantly
-                    const result = await refreshUserStatus(null, verificationData);
+            // --- STAGGERED STARTUP (iOS Stability FIX) ---
+            // We delay heavy native bridge initialization by 3 seconds.
+            // This prevents the 'Login Sync Storm' where IAP, Push, and User Status
+            // all fight for the native bridge at the exact same time.
+            setTimeout(async () => {
+                try {
+                    console.log('[IAP] Staggered initialization starting...');
+                    await SubscriptionService.initialize();
                     
-                    // --- RELIABLE SUCCESS NOTIFICATION ---
-                    // Only alert if the backend actually confirmed premium status
-                    if (result && (result.is_premium || result.isPremium || result.success)) {
-                        Alert.alert("You're Premium! 🚀", "Welcome to HollowScan Premium. Enjoy unlimited access!");
+                    // Startup Purchase Recovery
+                    // Only run this IF the user is logged in
+                    if (userRef.current?.id) {
+                        console.log('[IAP] Running background recovery check...');
+                        await SubscriptionService.restorePurchases();
                     }
-                },
-                (error) => {
-                    console.warn('[IAP] Purchase flow error:', error);
-                }
-            );
 
-            setIsLoading(false);
+                    await fetchIAPPlans();
+                    SubscriptionService.setupPurchaseListeners(
+                        async (purchase, verificationData) => {
+                            console.log('[IAP] Purchase verified successfully');
+                            const result = await refreshUserStatus(null, verificationData);
+                            if (result && (result.is_premium || result.isPremium || result.success)) {
+                                Alert.alert("You're Premium! 🚀", "Welcome to HollowScan Premium. Enjoy unlimited access!");
+                            }
+                        },
+                        (error) => {
+                            console.warn('[IAP] Purchase flow error:', error);
+                        }
+                    );
+                } catch (staggerErr) {
+                    console.warn('[IAP] Staggered init failed:', staggerErr);
+                }
+            }, 3000);
         };
 
         init();
@@ -138,15 +141,20 @@ export const UserProvider = ({ children }) => {
         };
         const plan = subscriptionPlans.find(p => p.id === sku);
         if (plan) {
+            console.log(`[IAP][DEBUG] Formatting price for ${sku} on ${Platform.OS}`);
             // Android: subscriptionOfferDetailsAndroid is the correct v14 field name
             if (plan.subscriptionOfferDetailsAndroid && plan.subscriptionOfferDetailsAndroid.length > 0) {
                 const offer = plan.subscriptionOfferDetailsAndroid[0];
                 if (offer.pricingPhases && offer.pricingPhases.pricingPhaseList && offer.pricingPhases.pricingPhaseList.length > 0) {
-                    return offer.pricingPhases.pricingPhaseList[0].formattedPrice;
+                    const price = offer.pricingPhases.pricingPhaseList[0].formattedPrice;
+                    console.log(`[IAP][ANDROID] Extracted Price: ${price}`);
+                    return price;
                 }
             }
             // Fallback to iOS/legacy standard price
-            return plan.localizedPrice || plan.price || FALLBACK_PRICES[sku] || '£4.99';
+            const iosPrice = plan.localizedPrice || plan.price || FALLBACK_PRICES[sku] || '£4.99';
+            console.log(`[IAP][iOS/FALLBACK] Price: ${iosPrice}`);
+            return iosPrice;
         }
         return FALLBACK_PRICES[sku] || '£4.99';
     };
@@ -186,22 +194,28 @@ export const UserProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
+        const traceId = Math.random().toString(36).substring(7);
         try {
+            console.log(`[AUTH][${traceId}] Login Start: ${email} on ${Platform.OS}`);
             const response = await fetch(`${Constants.API_BASE_URL}/v1/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
 
+            console.log(`[AUTH][${traceId}] Server Response: ${response.status} ${response.statusText}`);
             const data = await response.json();
+            
             if (data.success && data.user) {
+                console.log(`[AUTH][${traceId}] Login Success for UID: ${data.user.id}`);
                 await updateUser(data.user);
                 return { success: true };
             } else {
+                console.warn(`[AUTH][${traceId}] Login Failed: ${data.detail || 'Invalid credentials'}`);
                 return { success: false, message: data.detail || 'Invalid credentials' };
             }
         } catch (error) {
-            console.error('[AUTH] Login error:', error);
+            console.error(`[AUTH][${traceId}] Login Exception:`, error);
             return { success: false, message: 'Connection error. Please try again.' };
         }
     };
@@ -732,25 +746,32 @@ export const UserProvider = ({ children }) => {
         return false;
     })();
 
-    // Helper to check if the user is eligible for a 3-day free trial
-    // Constraint: Account must be < 72 hours old
-    // Default is FALSE — if we cannot confirm account is new, don't show trial UI.
-    // Apple's server-side eligibility is the authoritative gate regardless.
+    // Helper to check if the user is eligible for a 3-day free trial (Account < 72h old)
     const isTrialEligible = (() => {
-        // High confidence signal: onboarding is only true for brand new accounts
-        if (needsOnboarding) return true;
+        if (needsOnboarding) {
+            console.log('[TRIAL][DEBUG] Eligible: needsOnboarding is true');
+            return true;
+        }
         
-        if (!user) return false; // No user object = show plain CTA
+        if (!user) {
+            console.log('[TRIAL][DEBUG] Not Eligible: No user object found');
+            return false;
+        }
         
-        // Prefer created_at from DB
         const createdDate = user.created_at || user.created || user.createdAt;
-        if (!createdDate) return false; // Can't confirm account age → don't show trial
+        if (!createdDate) {
+            console.log('[TRIAL][DEBUG] Not Eligible: No creation date found for user');
+            return false;
+        }
 
         const created = new Date(createdDate);
         const now = new Date();
         const diffInHours = Math.abs(now - created) / 36e5;
         
-        return diffInHours < 72;
+        const isEligible = diffInHours < 72;
+        console.log(`[TRIAL][DEBUG] Account Age: ${diffInHours.toFixed(1)} hours. Eligible: ${isEligible}`);
+        
+        return isEligible;
     })();
 
     return (
