@@ -155,10 +155,20 @@ class SubscriptionService {
 
             let restoredCount = 0;
             for (const purchase of purchases) {
-            const isVerified = await this.verifyWithBackend(purchase);
+                const isVerified = await this.verifyWithBackend(purchase);
                 if (isVerified && isVerified.success) {
                     await finishTransaction({ purchase, isConsumable: false });
                     restoredCount++;
+                } else if (isVerified && isVerified.success === false) {
+                    // --- SAFETY CLEANUP ---
+                    // If the backend explicitly rejected the receipt (expired/invalid),
+                    // we finish it to clear the stuck transaction queue and prevent bridge flooding.
+                    console.log('[IAP] Safety cleanup: finishing rejected transaction:', purchase.productId);
+                    try {
+                        await finishTransaction({ purchase, isConsumable: false });
+                    } catch (fErr) {
+                        console.warn('[IAP] Safety cleanup failed:', fErr);
+                    }
                 }
             }
             return restoredCount > 0;

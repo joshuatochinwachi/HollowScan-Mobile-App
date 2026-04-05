@@ -318,15 +318,36 @@ const ProfileScreen = () => {
                         <Text style={styles.planText}>👑 {(user?.isPremium || isPremiumTelegram) ? 'Premium' : 'Free'} Plan</Text>
                     </View>
 
-                    {(user?.isPremium || isPremiumTelegram) && (premiumUntil || user?.subscription_end) && (
+                    {(user?.isPremium || isPremiumTelegram) && (premiumUntil || user?.subscription_end || user?.subscriptionEnd) && (
                         <View style={styles.daysLeftContainer}>
                             <Text style={styles.daysLeftText}>
                                 {(() => {
-                                    const end = new Date(premiumUntil || user?.subscriptionEnd || user?.subscription_end);
-                                    const now = new Date();
-                                    const diffTime = Math.abs(end - now);
-                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                    return `${diffDays} Day${diffDays !== 1 ? 's' : ''} Remaining`;
+                                    try {
+                                        const expiryStr = premiumUntil || user?.subscriptionEnd || user?.subscription_end;
+                                        if (!expiryStr) return '';
+                                        
+                                        const end = new Date(expiryStr);
+                                        const now = new Date();
+                                        const diffTime = end - now;
+                                        
+                                        if (diffTime <= 0) return 'Expiring Soon';
+
+                                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+
+                                        if (diffDays >= 1) {
+                                            // More than a day left - show number of days
+                                            // We use +1 if we want to be "optimistic" or just floor and show hours
+                                            return `${diffDays + 1} Day${(diffDays + 1) !== 1 ? 's' : ''} Remaining`;
+                                        } else if (diffHours >= 1) {
+                                            // Less than 24 hours - show hours
+                                            return `${diffHours} Hour${diffHours !== 1 ? 's' : ''} Remaining`;
+                                        } else {
+                                            return 'Expiring Soon';
+                                        }
+                                    } catch (e) {
+                                        return 'Premium Active';
+                                    }
                                 })()}
                             </Text>
                         </View>

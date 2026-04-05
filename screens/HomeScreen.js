@@ -282,8 +282,7 @@ const HomeScreen = () => {
         try {
             const response = await fetch(`${Constants.API_BASE_URL}/v1/user/status?user_id=${USER_ID}`);
             const data = await response.json();
-            setQuota({ used: data.views_used, limit: data.views_limit });
-            // Local state removed, syncing from context is handled by checkTelegramStatus and refreshUserStatus
+            // REMOVED broken setQuota call. Syncing is handled via the throttled context.
         } catch (e) { }
     };
 
@@ -558,18 +557,17 @@ const HomeScreen = () => {
                                     {hasResell && displayResale && (
                                         <View style={[styles.priceRight, { overflow: 'hidden' }]}>
                                             <View>
-                                                <Text style={[styles.resalePrice, { color: '#10B981', textAlign: 'right' }]}>
-                                                    Market: {displayResale}
+                                                <Text style={[styles.resalePrice, { color: '#10B981', textAlign: 'right', opacity: userIsPremium ? 1 : 0.3 }]}>
+                                                    Market: {userIsPremium ? displayResale : '??.??'}
                                                 </Text>
                                                 {roiPercent > 0 && (
-                                                    <View style={[styles.roiBadgeSmall, { backgroundColor: brand.BLUE + '15' }]}>
-                                                        <Text style={[styles.roiBadgeText, { color: brand.BLUE }]}>+{roiPercent}% ROI</Text>
+                                                    <View style={[styles.roiBadgeSmall, { backgroundColor: brand.BLUE + (userIsPremium ? '15' : '08') }]}>
+                                                        <Text style={[styles.roiBadgeText, { color: brand.BLUE, opacity: userIsPremium ? 1 : 0.4 }]}>
+                                                            {userIsPremium ? `+${roiPercent}% ROI` : '??% ROI'}
+                                                        </Text>
                                                     </View>
                                                 )}
                                             </View>
-                                            {!userIsPremium && (
-                                                <BlurView intensity={25} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-                                            )}
                                         </View>
                                     )}
                                 </>
@@ -585,10 +583,9 @@ const HomeScreen = () => {
                             </View>
                             
                             <View style={[styles.tag, { backgroundColor: colors.border, overflow: 'hidden' }]}>
-                                <Text style={[styles.tagText, { color: colors.textSecondary }]}>{catName}</Text>
-                                {!userIsPremium && (
-                                    <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-                                )}
+                                <Text style={[styles.tagText, { color: colors.textSecondary, opacity: userIsPremium ? 1 : 0.4 }]}>
+                                    {userIsPremium ? catName : '••••••••'}
+                                </Text>
                             </View>
                             
                             <View style={[styles.tag, { backgroundColor: colors.border }]}>
