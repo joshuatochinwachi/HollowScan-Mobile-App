@@ -34,6 +34,44 @@ export const formatPriceDisplay = (value, region) => {
 };
 
 /**
+ * Dynamically formats IAP prices from Apple/Google Store.
+ * Extracts symbol and ensures 2 decimal places without hardcoding.
+ * @param {string} rawPrice - The raw string from the store (e.g. "£4.99" or "$4.990001")
+ * @returns {string} - Cleanly formatted price
+ */
+export const formatIAPPrice = (rawPrice) => {
+    if (!rawPrice) return '';
+    
+    // 1. Extract the numeric part (handling both . and , as decimals potentially, 
+    // but parseFloat usually wants .)
+    const cleanNumericStr = rawPrice.replace(/[^0-9.]/g, '');
+    const numericPart = parseFloat(cleanNumericStr);
+    
+    if (isNaN(numericPart)) return rawPrice;
+
+    // 2. Identify the symbol (everything that isn't a digit, dot, comma, or space)
+    const symbol = rawPrice.replace(/[0-9., ]/g, '').trim();
+    
+    // 3. Determine symbol position (is it at the start or end of the original string?)
+    const trimmedRaw = rawPrice.trim();
+    const isSymbolAtStart = trimmedRaw.startsWith(symbol);
+    const isSymbolAtEnd = trimmedRaw.endsWith(symbol);
+
+    // 4. Format the number to exactly 2 decimal places to fix floating point glitches
+    const formattedNum = numericPart.toFixed(2);
+
+    // 5. Reconstruct the string preserving position
+    if (isSymbolAtEnd) {
+        return `${formattedNum} ${symbol}`.trim();
+    } else if (isSymbolAtStart) {
+        return `${symbol}${formattedNum}`;
+    }
+
+    // Fallback: If we can't determine position, default to symbol-first
+    return `${symbol}${formattedNum}`;
+};
+
+/**
  * Returns only the currency symbol for a given region.
  * @param {string} region 
  * @returns {string}

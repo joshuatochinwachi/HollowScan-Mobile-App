@@ -326,7 +326,9 @@ export const UserProvider = ({ children }) => {
                 subscription_end: data.subscription_end !== undefined ? data.subscription_end : (data.subscriptionEnd !== undefined ? data.subscriptionEnd : userRef.current?.subscription_end),
                 subscriptionEnd: data.subscription_end !== undefined ? data.subscription_end : (data.subscriptionEnd !== undefined ? data.subscriptionEnd : userRef.current?.subscriptionEnd), // FIX: Sync camelCase
                 notification_preferences: data.notification_preferences || userRef.current?.notification_preferences,
-                region: data.region || userRef.current?.region
+                region: data.region || userRef.current?.region,
+                // CRITICAL FIX: Explicitly preserve creation date or sync from status if available
+                created_at: data.created_at || data.joined || userRef.current?.created_at || userRef.current?.joined
             };
 
             if (data.notification_preferences) {

@@ -16,8 +16,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
     const [loading, setLoading] = React.useState(false);
     const [copiedLabel, setCopiedLabel] = useState(null);
     const { toggleSave, isSaved } = useContext(SavedContext);
-    const { isDarkMode } = useContext(UserContext);
+    const { isDarkMode, isPremium: userIsPremium } = useContext(UserContext);
     const brand = Constants.BRAND;
+
+    // --- PREMIUM GATE CHECK ---
+    // If the product is locked and user is NOT premium, redirect to paywall.
+    // This handles both deep links and direct navigations.
+    React.useEffect(() => {
+        if (product && product.is_locked && !userIsPremium) {
+            console.log('[GATE] Access denied to locked product. Redirecting to paywall.');
+            // Replace ensures they can't just go 'back' to the locked product
+            navigation.replace('PremiumPaywall');
+        }
+    }, [product, userIsPremium, navigation]);
 
     const colors = isDarkMode ? {
         bg: brand.DARK_BG,

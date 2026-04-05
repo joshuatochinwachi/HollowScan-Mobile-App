@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { UserContext } from '../context/UserContext';
 import Constants from '../Constants';
 import SubscriptionService from '../services/SubscriptionService';
+import { formatIAPPrice } from '../utils/format';
 
 const { width } = Dimensions.get('window');
 
@@ -27,15 +28,24 @@ const PremiumPaywallScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(false);
     const [restoring, setRestoring] = useState(false);
 
-    // Compute the real saving % between monthly × 12 vs yearly
-    // getPlanPrice returns a string like '£4.99' — we strip non-numeric chars to parse it
+    const monthlyPriceData = (() => {
+        const str = getPlanPrice('premium_monthly');
+        const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+        const display = formatIAPPrice(str);
+        return { val, display };
+    })();
+
+    const yearlyPriceData = (() => {
+        const str = getPlanPrice('premium_yearly');
+        const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
+        const display = formatIAPPrice(str);
+        return { val, display };
+    })();
+
     const yearlySavingLabel = (() => {
         try {
-            const monthlyStr = getPlanPrice('premium_monthly');
-            const yearlyStr = getPlanPrice('premium_yearly');
-            // Strip everything except digits and decimal point
-            const monthly = parseFloat(monthlyStr.replace(/[^0-9.]/g, ''));
-            const yearly = parseFloat(yearlyStr.replace(/[^0-9.]/g, ''));
+            const monthly = monthlyPriceData.val;
+            const yearly = yearlyPriceData.val;
             if (!monthly || !yearly || monthly <= 0) return 'BEST VALUE';
             const annualMonthly = monthly * 12;
             const saving = Math.round(((annualMonthly - yearly) / annualMonthly) * 100);
@@ -160,7 +170,7 @@ const PremiumPaywallScreen = ({ navigation }) => {
                                 <View style={styles.planHeader}>
                                     <View>
                                         <Text style={[styles.planName, { color: colors.text }]}>Monthly</Text>
-                                        <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_monthly')}<Text style={styles.perMonth}>/mo</Text></Text>
+                                        <Text style={[styles.planPrice, { color: colors.text }]}>{monthlyPriceData.display}<Text style={styles.perMonth}>/mo</Text></Text>
                                     </View>
                                     {isTrialEligible && (
                                         <View style={[styles.trialBadge, { backgroundColor: colors.accent }]}>
@@ -193,7 +203,7 @@ const PremiumPaywallScreen = ({ navigation }) => {
                                 <View style={styles.planHeader}>
                                     <View>
                                         <Text style={[styles.planName, { color: colors.text }]}>Yearly Pro</Text>
-                                        <Text style={[styles.planPrice, { color: colors.text }]}>{getPlanPrice('premium_yearly')}<Text style={styles.perMonth}>/yr</Text></Text>
+                                        <Text style={[styles.planPrice, { color: colors.text }]}>{yearlyPriceData.display}<Text style={styles.perMonth}>/yr</Text></Text>
                                     </View>
                                     <View style={[styles.valueBadge, { backgroundColor: colors.success }]}>
                                         <Text style={styles.valueBadgeText}>{yearlySavingLabel}</Text>

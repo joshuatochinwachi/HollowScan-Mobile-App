@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Constants from '../Constants';
 import { UserContext } from '../context/UserContext';
 import InfoModal from '../components/InfoModal';
+import { formatIAPPrice } from '../utils/format';
 
 const { width } = Dimensions.get('window');
 
@@ -369,7 +370,7 @@ const ProfileScreen = () => {
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={styles.upgradeText}>Monthly Premium • 1 Month</Text>
                                         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
-                                            {getPlanPrice('premium_monthly')} / month
+                                            {formatIAPPrice(getPlanPrice('premium_monthly'))} / month
                                         </Text>
                                     </View>
                                 </LinearGradient>
@@ -393,7 +394,7 @@ const ProfileScreen = () => {
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium • 1 Year (Best Value) 👑</Text>
                                         <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 12, fontWeight: '700' }}>
-                                            {getPlanPrice('premium_yearly')} / year
+                                            {formatIAPPrice(getPlanPrice('premium_yearly'))} / year
                                         </Text>
                                     </View>
                                 </LinearGradient>
