@@ -2,8 +2,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     initConnection,
-    fetchProducts,
-    requestPurchase,
+    getSubscriptions as iapGetSubscriptions, 
+    requestSubscription as iapRequestSubscription,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -74,10 +74,10 @@ class SubscriptionService {
         }
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
+            const products = await iapGetSubscriptions({ skus: itemSkus }); // ← V14 Standard
             
             if (!products || products.length === 0) {
-                console.warn('[IAP] No products returned from Google Play. Possible causes: SKUs mismatch, Inactive Base Plan, or Regional restriction.');
+                console.warn('[IAP] No products returned from Store. Possible causes: SKUs mismatch or Regional restriction.');
             } else {
                 console.log('[IAP] Successfully found products:', products.length);
             }
@@ -104,35 +104,29 @@ class SubscriptionService {
             console.log('[IAP] Locking bridge for request:', sku);
 
             if (Platform.OS === 'android') {
-                const products = await fetchProducts({ skus: [sku], type: 'subs' });
-                const product = products?.find(p => p.id === sku);
+                const products = await iapGetSubscriptions({ skus: [sku] });
+                const product = products?.find(p => p.productId === sku || p.id === sku);
 
                 if (!product) {
-                    throw new Error(`Product "${sku}" not found in Google Play.`);
+                    throw new Error(`Plan "${sku}" not found in Google Play.`);
                 }
 
                 const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
                 if (!offerToken) {
-                    throw new Error(`Offer token not found for ${sku}.`);
+                    throw new Error(`Trial/Base offer not found for ${sku}.`);
                 }
 
-                await requestPurchase({
-                    type: 'subs',
-                    request: {
-                        google: {
-                            skus: [sku],
-                            subscriptionOffers: [{ sku, offerToken }],
-                        },
-                    },
+                await iapRequestSubscription({
+                    sku: sku,
+                    subscriptionOffers: [{ sku, offerToken }],
                 });
             } else {
-                // iOS (Modern v12+ request structure)
-                console.log(`[IAP] Sending Apple request for sku: ${sku}`);
-                await requestPurchase({
-                    sku: sku,
-                    andSubstitute: false 
+                // iOS (Modern v14+ must use requestSubscription for recurring plans)
+                console.log(`[IAP] Sending Apple requestSubscription for sku: ${sku}`);
+                await iapRequestSubscription({
+                    sku: sku
                 });
-                console.log('[IAP] Native Apple request sent to bridge.');
+                console.log('[IAP] Native Apple requestSubscription sent to bridge.');
             }
         } catch (err) {
             const errorCode = err?.code || 'UNKNOWN';
