@@ -59,12 +59,12 @@ iap_implementation_plan.md
 # never forget to take this out before you build.. then untrack it using `git rm --cached eas.json` to bring it back when you're done
 eas.json
 google-services.json
-
+# already set in github secrets for github actions/workflows
 
 
 # ios build only --- for push notifications
-GoogleService-Info.plist
-
+GoogleService-Info.plist  
+# already set in github secrets for github actions/workflows
 
 
 
@@ -75,3 +75,13 @@ hollowscan-1b311-firebase-adminsdk-fbsvc-737122cecd.json
 
 # ...
 AuthKey_KJY2TRV893.p8
+
+
+
+
+
+DistCert_5T4S73T2L8.p12
+DistCertCredentials_5T4S73T2L8.md
+DistCertPrivateKey_5T4S73T2L8.txt
+
+ProvisioningProfile_V4MLP9M9R8.mobileprovision

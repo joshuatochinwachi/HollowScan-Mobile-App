@@ -29,6 +29,15 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
+      - name: Inject Secrets
+        run: |
+          cat << 'EOF' > google-services.json
+          ${{ secrets.GOOGLE_SERVICES_ANDROID }}
+          EOF
+          cat << 'EOF' > eas.json
+          ${{ secrets.EAS_JSON }}
+          EOF
+
       - name: Build Android AAB
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

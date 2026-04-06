@@ -141,8 +141,7 @@ class SubscriptionService {
 
                 console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
                 await requestPurchase({
-                    sku: sku,
-                    andSubstitute: false 
+                    sku: sku
                 });
                 console.log('[IAP] Native Apple requestPurchase sent to bridge.');
             }
