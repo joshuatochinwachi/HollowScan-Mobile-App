@@ -88,7 +88,8 @@ module.exports = ({ config }) => {
             "kotlinVersion": "2.2.0"
           },
           "ios": {
-            "useFrameworks": "static"
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1"
           }
         }
       ],
