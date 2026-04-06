@@ -3,12 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     initConnection,
     fetchProducts,
-    requestPurchase,
+    requestSubscription,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
     getAvailablePurchases,
-    getReceiptIOS,
     endConnection
 } from 'react-native-iap';
 import Constants from '../Constants';
@@ -117,7 +116,7 @@ class SubscriptionService {
                     throw new Error(`Offer token not found for ${sku}.`);
                 }
 
-                await requestPurchase({
+                await requestSubscription({
                     skus: [sku],
                     subscriptionOffers: [{ sku, offerToken }],
                     obfuscatedAccountIdAndroid: this.currentUserId,
@@ -138,11 +137,11 @@ class SubscriptionService {
 
                 console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
                 
-                // FINAL FIX: Using classic v12 syntax with forced pre-flight check
-                await requestPurchase({
+                // v14: Use requestSubscription for all subscription products
+                await requestSubscription({
                     sku: sku
                 });
-                console.log('[IAP] Native Apple requestPurchase successfully triggered.');
+                console.log('[IAP] Native Apple requestSubscription successfully triggered.');
             }
         } catch (err) {
             const errorCode = err?.code || 'UNKNOWN';
@@ -220,10 +219,9 @@ class SubscriptionService {
             let requestBody;
 
             if (Platform.OS === 'ios') {
-                const receipt = await getReceiptIOS();
                 requestBody = {
                     user_id: this.currentUserId,
-                    receipt_data: receipt,
+                    receipt_data: purchase.transactionReceipt,
                     product_id: purchase.productId,
                 };
             } else {

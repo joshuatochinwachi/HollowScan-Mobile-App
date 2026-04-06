@@ -18,10 +18,6 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
         
-      - name: Setup Native iOS Project
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx expo prebuild --platform ios
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
