@@ -85,7 +85,10 @@ module.exports = ({ config }) => {
             "compileSdkVersion": 34,
             "targetSdkVersion": 34,
             "buildToolsVersion": "34.0.0",
-            "kotlinVersion": "1.9.24"
+            "kotlinVersion": "1.9.24",
+            "extraMavenRepos": [],
+            "supportLibVersion": "28.0.0",
+            "googlePlayServicesVersion": "18.0.0"
           },
           "ios": {
             "useFrameworks": "static",
