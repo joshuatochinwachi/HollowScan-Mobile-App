@@ -41,8 +41,9 @@ jobs:
       - name: Build Android AAB
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials --vcs-controlled false > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
+          npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
 
       - name: Upload Artifact
         if: success()

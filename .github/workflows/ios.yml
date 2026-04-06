@@ -50,8 +50,9 @@ jobs:
       - name: Build iOS IPA (Local on GitHub)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform ios --profile production --local --non-interactive --vcs-controlled false
+          npx eas-cli build --platform ios --profile production --local --non-interactive
 
       - name: Upload iOS Archive
         if: success()
