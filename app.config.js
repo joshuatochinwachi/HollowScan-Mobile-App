@@ -96,7 +96,7 @@ module.exports = ({ config }) => {
         "react-native-iap",
         {
           "ios": {
-            "storeKit2": true,
+            "storeKit2": false,
             "productIds": ["premium_monthly", "premium_yearly"]
           },
           "android": {

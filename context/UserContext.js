@@ -342,6 +342,7 @@ export const UserProvider = ({ children }) => {
                 return;
             }
 
+            const createdAt = data.created_at || data.joined || userRef.current?.created_at || userRef.current?.joined;
             const updatedUser = {
                 ...userRef.current,
                 name: data.name || userRef.current.name,
@@ -355,8 +356,7 @@ export const UserProvider = ({ children }) => {
                 subscriptionEnd: data.subscription_end !== undefined ? data.subscription_end : (data.subscriptionEnd !== undefined ? data.subscriptionEnd : userRef.current?.subscriptionEnd), // FIX: Sync camelCase
                 notification_preferences: data.notification_preferences || userRef.current?.notification_preferences,
                 region: data.region || userRef.current?.region,
-                // CRITICAL FIX: Explicitly preserve creation date or sync from status if available
-                created_at: data.created_at || data.joined || userRef.current?.created_at || userRef.current?.joined
+                created_at: createdAt ? new Date(createdAt).toISOString() : null
             };
 
             if (data.notification_preferences) {
@@ -692,13 +692,14 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const purchasePremium = async (planType = 'monthly') => {
+    const purchasePremium = async (planType = 'monthly', isTrial = false) => {
         if (!user?.id) return { success: false, message: 'Please login first' };
         const sku = planType === 'yearly' ? 'premium_yearly' : 'premium_monthly';
         try {
             SubscriptionService.setCurrentUserId(user.id);
+            console.log(`[IAP] UserContext: Requesting ${isTrial ? 'TRIAL' : 'PURCHASE'} for ${sku}`);
             await SubscriptionService.requestSubscription(sku);
-            return { success: true }; // This just indicates the request was sent to the Store
+            return { success: true }; 
         } catch (error) {
             return { success: false, message: error.message };
         }

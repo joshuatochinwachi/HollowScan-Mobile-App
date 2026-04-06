@@ -138,20 +138,10 @@ class SubscriptionService {
 
                 console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
                 
-                console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
-                
-                // FIX: Xcode 16 / StoreKit 2 requires 'skus' (plural array) for all requests
-                const purchaseObject = {
-                    sku: sku,
-                    skus: [sku],
-                };
-                
-                console.warn('[IAP] FINAL PAYLOAD TO APPLE:', JSON.stringify(purchaseObject));
-                
-                // FINAL FIX: Add a tiny 500ms delay to prevent race conditions on iOS 17/18
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                await requestPurchase(purchaseObject);
+                // FINAL FIX: Using classic v12 syntax with forced pre-flight check
+                await requestPurchase({
+                    sku: sku
+                });
                 console.log('[IAP] Native Apple requestPurchase successfully triggered.');
             }
         } catch (err) {

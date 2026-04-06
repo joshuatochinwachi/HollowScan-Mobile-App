@@ -94,11 +94,14 @@ const PremiumPaywallScreen = ({ navigation }) => {
         success: '#34C759'
     };
 
-    const handlePurchase = async (type) => {
+    const handlePurchase = async (type, isTrialIntent = false) => {
         setLoading(true);
         try {
-            console.log(`[PAYWALL] Starting purchase flow for: ${type}`);
-            const result = await purchasePremium(type);
+            // 🛡️ IRON-CLAD SAFETY GATE: Final check before triggering native sheet
+            const finalTrialIntent = isTrialIntent && isTrialEligible;
+            console.log(`[PAYWALL] Starting purchase flow for: ${type} (Requested Trial: ${isTrialIntent}, Final Trial: ${finalTrialIntent})`);
+            
+            const result = await purchasePremium(type, finalTrialIntent);
             console.log(`[PAYWALL] Bridge result for ${type}:`, result);
             
             if (!result.success) {
@@ -185,7 +188,7 @@ const PremiumPaywallScreen = ({ navigation }) => {
                             {/* Monthly Plan - Conditional Trial Eligibility */}
                             <TouchableOpacity 
                                 style={[styles.planCard, { backgroundColor: colors.card, borderColor: isTrialEligible ? colors.accent : colors.border }]}
-                                onPress={() => handlePurchase('monthly')}
+                                onPress={() => handlePurchase('monthly', isTrialEligible)}
                                 activeOpacity={0.9}
                             >
                                 <View style={styles.planHeader}>
@@ -264,10 +267,13 @@ const PremiumPaywallScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
                     
-                    <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
-                        Subscriptions will be charged to your card through your {Platform.OS === 'ios' ? 'iTunes' : 'Google Play'} account. 
-                        Your subscription will automatically renew unless cancelled at least 24 hours before the end of the current period.
-                    </Text>
+                    {/* 🕵️ Diagnostic Truth-Mode */}
+                    <View style={{ marginTop: 20, padding: 10, backgroundColor: colors.border + '20', borderRadius: 8 }}>
+                        <Text style={{ fontSize: 10, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                            [DEBUG] ID: com.kttylabs.app | 
+                            Fetch Status: {monthlyPriceData.val !== 4.99 || yearlyPriceData.val !== 55.50 ? 'LIVE' : 'FALLBACK'}
+                        </Text>
+                    </View>
                 </View>
 
             </ScrollView>
