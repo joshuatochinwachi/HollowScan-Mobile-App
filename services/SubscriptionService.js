@@ -127,8 +127,19 @@ class SubscriptionService {
                     },
                 });
             } else {
-                // iOS (GOLDEN VERSION FROM MARCH 16)
-                console.log(`[IAP] Sending Apple requestPurchase for sku: ${sku}`);
+                // iOS (Pre-flight sync to prevent 'Missing Configuration' error)
+                console.log(`[IAP] Pre-flight sync for SKU: ${sku}`);
+                
+                // Force a re-fetch to 'warm up' the native bridge for this specific SKU
+                const fresh = await fetchProducts({ skus: [sku], type: 'subs' });
+                const valid = fresh?.find(p => p.productId === sku || p.id === sku);
+                
+                if (!valid) {
+                    console.warn(`[IAP] SKU ${sku} was not found by Apple Store during pre-flight.`);
+                    throw new Error('This plan is temporarily unavailable. Please try again in 30 seconds.');
+                }
+
+                console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
                 await requestPurchase({
                     sku: sku,
                     andSubstitute: false 
