@@ -29,17 +29,18 @@ jobs:
           cat << 'EOF' > eas.json
           ${{ secrets.EAS_JSON }}
           EOF
+          echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 --decode > release.p12
+          echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > release.mobileprovision
 
       - name: Build iOS IPA (Local on GitHub)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          # These secrets allow GitHub to sign your app without EAS cloud
-          IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
-          IOS_CERT_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASS }}
-          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
         run: |
           # The --local flag tells EAS to build on THIS machine (GitHub), not the Expo cloud
-          eas build --platform ios --profile production --local --non-interactive > build_log_ios.txt 2>&1 || { cat build_log_ios.txt; exit 1; }
+          npx eas-cli build --platform ios --profile production --local --non-interactive \
+            --certificate-path ./release.p12 \
+            --certificate-password "${{ secrets.IOS_CERTIFICATE_PASS }}" \
+            --provisioning-profile-path ./release.mobileprovision
 
       - name: Upload iOS Archive
         if: success()
