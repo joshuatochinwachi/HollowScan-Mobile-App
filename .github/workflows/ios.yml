@@ -4,7 +4,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Required for iOS compilation
+    runs-on: macos-15 # Use latest stable macOS and Xcode 16 for iOS 18 SDK
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
