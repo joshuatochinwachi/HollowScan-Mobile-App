@@ -2,8 +2,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     initConnection,
-    getSubscriptions as iapGetSubscriptions, 
-    requestSubscription as iapRequestSubscription,
+    fetchProducts,
+    requestPurchase,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -27,12 +27,12 @@ class SubscriptionService {
         this.purchaseErrorSubscription = null;
         this.currentUserId = null;
         this.isConnected = false;
-        this.isRequesting = false; // ← SINGLE-REQUEST GUARD
+        this.isRequesting = false; // ← SINGLE-REQUEST GUARD ADDED TODAY
     }
 
     setCurrentUserId(userId) {
         this.currentUserId = userId;
-        console.log('[IAP] User ID set for verification:', userId);
+        console.log('[IAP] User ID set for backend verification:', userId);
     }
 
     async initialize() {
@@ -74,7 +74,7 @@ class SubscriptionService {
         }
         try {
             console.log('[IAP] Fetching subscriptions for SKUs:', itemSkus);
-            const products = await iapGetSubscriptions({ skus: itemSkus }); // ← V14 Standard
+            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
             
             if (!products || products.length === 0) {
                 console.warn('[IAP] No products returned from Store. Possible causes: SKUs mismatch or Regional restriction.');
@@ -93,40 +93,47 @@ class SubscriptionService {
         if (!this.isConnected) {
             throw new Error('Store connection is initializing. Please try again in 5 seconds.');
         }
-
+        
+        // ADDED TODAY: Prevent double-tap bridge crash
         if (this.isRequesting) {
-            console.log('[IAP] Blocked concurrent request for:', sku);
-            return; 
+            console.log('[IAP] Blocked concurrent bridge request for:', sku);
+            return;
         }
 
         try {
             this.isRequesting = true;
-            console.log('[IAP] Locking bridge for request:', sku);
+            console.log('[IAP] Native bridge request for SKU:', sku);
 
             if (Platform.OS === 'android') {
-                const products = await iapGetSubscriptions({ skus: [sku] });
+                const products = await fetchProducts({ skus: [sku], type: 'subs' });
                 const product = products?.find(p => p.productId === sku || p.id === sku);
 
                 if (!product) {
-                    throw new Error(`Plan "${sku}" not found in Google Play.`);
+                    throw new Error(`Product "${sku}" not found in Google Play.`);
                 }
 
                 const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
                 if (!offerToken) {
-                    throw new Error(`Trial/Base offer not found for ${sku}.`);
+                    throw new Error(`Offer token not found for ${sku}.`);
                 }
 
-                await iapRequestSubscription({
-                    sku: sku,
-                    subscriptionOffers: [{ sku, offerToken }],
+                await requestPurchase({
+                    type: 'subs',
+                    request: {
+                        google: {
+                            skus: [sku],
+                            subscriptionOffers: [{ sku, offerToken }],
+                        },
+                    },
                 });
             } else {
-                // iOS (Modern v14+ must use requestSubscription for recurring plans)
-                console.log(`[IAP] Sending Apple requestSubscription for sku: ${sku}`);
-                await iapRequestSubscription({
-                    sku: sku
+                // iOS (GOLDEN VERSION FROM MARCH 16)
+                console.log(`[IAP] Sending Apple requestPurchase for sku: ${sku}`);
+                await requestPurchase({
+                    sku: sku,
+                    andSubstitute: false 
                 });
-                console.log('[IAP] Native Apple requestSubscription sent to bridge.');
+                console.log('[IAP] Native Apple requestPurchase sent to bridge.');
             }
         } catch (err) {
             const errorCode = err?.code || 'UNKNOWN';
@@ -153,144 +160,64 @@ class SubscriptionService {
         try {
             console.log('[IAP] Restoring purchases...');
             const purchases = await getAvailablePurchases();
-            console.log('[IAP] Available purchases:', purchases.length);
-
-            let restoredCount = 0;
-            for (const purchase of purchases) {
-                const isVerified = await this.verifyWithBackend(purchase);
-                if (isVerified && isVerified.success) {
-                    await finishTransaction({ purchase, isConsumable: false });
-                    restoredCount++;
-                } else if (isVerified && isVerified.success === false) {
-                    // --- SAFETY CLEANUP ---
-                    // If the backend explicitly rejected the receipt (expired/invalid),
-                    // we finish it to clear the stuck transaction queue and prevent bridge flooding.
-                    console.log('[IAP] Safety cleanup: finishing rejected transaction:', purchase.productId);
-                    try {
-                        await finishTransaction({ purchase, isConsumable: false });
-                    } catch (fErr) {
-                        console.warn('[IAP] Safety cleanup failed:', fErr);
-                    }
+            if (purchases && purchases.length > 0) {
+                console.log(`[IAP] Found ${purchases.length} purchases to verify.`);
+                for (const purchase of purchases) {
+                    await this.verifyPurchaseOnBackend(purchase);
                 }
+                return true;
             }
-            return restoredCount > 0;
-        } catch (err) {
-            console.warn('[IAP] Restore error', err);
             return false;
+        } catch (err) {
+            console.warn('[IAP] Restore error:', err);
+            throw err;
         }
     }
 
-    setupPurchaseListeners(onSuccess, onError) {
+    setupPurchaseListeners() {
         this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase) => {
-            console.log('[IAP] Purchase updated:', purchase.productId);
-            // On Android, the token is `purchaseToken`.
-            // On iOS (SK1 legacy path), it's `transactionReceipt`.
-            // We check both so this listener fires correctly on both platforms.
-            const token = purchase.purchaseToken || purchase.transactionReceipt;
-            if (token) {
+            const receipt = purchase.transactionReceipt;
+            console.log('[IAP] Purchase update received.');
+            
+            if (receipt) {
                 try {
-                    const verificationResponse = await this.verifyWithBackend(purchase);
-                    if (verificationResponse && verificationResponse.success) {
+                    const result = await this.verifyPurchaseOnBackend(purchase);
+                    
+                    if (result.success) {
+                        console.log('[IAP] Backend verification successful. Finishing transaction...');
                         await finishTransaction({ purchase, isConsumable: false });
-                        console.log('[IAP] Transaction finished successfully');
-                        onSuccess && onSuccess(purchase, verificationResponse);
                     } else {
-                        console.warn('[IAP] Verification failed for:', purchase.productId);
-                        onError && onError('Verification failed');
+                        console.warn('[IAP] Backend verification failed:', result.message);
                     }
-                } catch (ackErr) {
-                    console.warn('[IAP] Ack Error', ackErr);
-                    onError && onError(ackErr.message);
-                }
-            } else {
-                // Defensive: on iOS SK2 JWS flow the token fields may be absent initially.
-                // Still attempt verification with whatever is available.
-                console.warn('[IAP] No token found on purchase object. Attempting verification anyway.');
-                try {
-                    const verificationResponse = await this.verifyWithBackend(purchase);
-                    if (verificationResponse && verificationResponse.success) {
-                        await finishTransaction({ purchase, isConsumable: false });
-                        onSuccess && onSuccess(purchase, verificationResponse);
-                    }
-                } catch (fallbackErr) {
-                    console.warn('[IAP] Fallback verification error:', fallbackErr);
+                } catch (err) {
+                    console.error('[IAP] Failed to finish transaction:', err);
                 }
             }
         });
 
         this.purchaseErrorSubscription = purchaseErrorListener((error) => {
-            console.warn('[IAP] Purchase Error', error);
-            if (error?.code !== 'E_USER_CANCELLED') {
-                onError && onError(error.message || 'Purchase failed');
-            }
+            console.warn('[IAP] Purchase error listener event:', error);
         });
     }
 
-    async verifyWithBackend(purchase) {
-        // --- FIX 2: User ID Race Condition Guard ---
+    async verifyPurchaseOnBackend(purchase) {
         if (!this.currentUserId) {
-            console.log('[IAP] currentUserId null, attempting AsyncStorage recovery...');
-            try {
-                const stored = await AsyncStorage.getItem('user_data');
-                if (stored) {
-                    const userData = JSON.parse(stored);
-                    if (userData && userData.id) {
-                        this.currentUserId = userData.id;
-                        console.log('[IAP] Recovered user_id from AsyncStorage:', this.currentUserId);
-                    }
-                }
-            } catch (e) {
-                console.error('[IAP] User ID recovery failed:', e);
-            }
-        }
-
-        if (!this.currentUserId) {
-            console.error('[IAP] Verification aborted: No user_id available');
-            return { success: false, message: 'No user ID' };
+            console.warn('[IAP] Cannot verify: Missing currentUserId.');
+            return { success: false, message: 'User not logged in' };
         }
 
         try {
-            console.log(`[IAP][STEP 1] Verifying with backend for user: ${this.currentUserId} (OS: ${Platform.OS})`);
-            
-            let endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
-            let requestBody = {};
-            
+            const endpointUrl = `${API_BASE_URL}/v1/subscriptions/verify`;
+            let requestBody;
+
             if (Platform.OS === 'ios') {
-                // iOS Apple Pay flow
-                console.log(`[IAP][iOS] Checking for receipt on Product: ${purchase.productId}`);
-                
-                let receipt = purchase.transactionReceipt;
-                
-                if (!receipt || receipt.startsWith('eyJ')) {
-                    console.log('[IAP][iOS] JWS detected or receipt missing, fetching legacy receipt...');
-                    try {
-                        receipt = await getReceiptIOS();
-                    } catch (rErr) {
-                        console.warn('[IAP][iOS] getReceiptIOS failed:', rErr);
-                        receipt = null;
-                    }
-                }
-
-                if (!receipt) {
-                    console.error('[IAP][iOS] ERROR: No receipt data found!');
-                    return { success: false, message: 'No receipt data available. Please try again.' };
-                }
-                
-                if (receipt.startsWith('eyJ')) {
-                    console.error('[IAP][iOS] ERROR: Receipt is still JWS after fallback!');
-                    return { success: false, message: 'Receipt format incompatible.' };
-                }
-
-                endpointUrl = `${API_BASE_URL}/v1/auth/apple-iap/verify`;
+                const receipt = await getReceiptIOS();
                 requestBody = {
                     user_id: this.currentUserId,
                     receipt_data: receipt,
                     product_id: purchase.productId,
                 };
             } else {
-                // Android Google Play flow
-                console.log(`[IAP][ANDROID] Verifying Token on Product: ${purchase.productId}`);
-                endpointUrl = `${API_BASE_URL}/v1/auth/google-play/verify`;
                 requestBody = {
                     user_id: this.currentUserId,
                     purchase_token: purchase.purchaseToken,
@@ -298,24 +225,21 @@ class SubscriptionService {
                 };
             }
 
-            console.log(`[IAP][STEP 2] POSTing to: ${endpointUrl}`);
             const response = await fetch(endpointUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.EXPO_PUBLIC_SUPABASE_KEY,
+                    'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_KEY}`
+                },
                 body: JSON.stringify(requestBody),
             });
 
-            console.log(`[IAP][STEP 3] Backend Response Status: ${response.status}`);
             const data = await response.json();
-            console.log('[IAP][STEP 4] Backend verification result:', data.success ? 'SUCCESS' : 'FAILED');
-            
-            if (!data.success) {
-                console.warn('[IAP][DEBUG] Backend error message:', data.message || data.detail || 'No detail');
-            }
-            
+            console.log('[IAP] Backend verification result success:', data.success);
             return data;
         } catch (err) {
-            console.error('[IAP][EXCEPTION] Backend verification fatal error:', err);
+            console.error('[IAP] Backend verification fatal error', err);
             return { success: false, message: err.message };
         }
     }
