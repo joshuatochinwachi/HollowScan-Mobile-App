@@ -20,6 +20,9 @@ jobs:
 
       - name: Install EAS CLI
         run: npm install -g eas-cli
+      
+      - name: Install JQ (for versioning)
+        run: brew install jq
 
       - name: Inject Secrets
         run: |
@@ -41,13 +44,22 @@ jobs:
           }
           EOF
 
+      - name: Bump Build Number
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          # Fetch current remote number, add 1, and set it back
+          CURRENT_V=$(npx eas-cli build:version:get --platform ios --profile production --json | jq -r '.[0].buildNumber // 41')
+          NEXT_V=$((CURRENT_V + 1))
+          npx eas-cli build:version:set --platform ios --profile production --build-number $NEXT_V
+
       - name: Build iOS IPA (Local on GitHub)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GOOGLE_SERVICES_IOS: ${{ secrets.GOOGLE_SERVICES_IOS }}
           EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform ios --profile production --local --non-interactive --auto-increment
+          npx eas-cli build --platform ios --profile production --local --non-interactive
 
       - name: Upload iOS Archive
         if: success()
