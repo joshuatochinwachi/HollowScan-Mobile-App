@@ -169,6 +169,7 @@ const HomeScreen = () => {
         }
 
         // Free user - show paywall
+        console.log('[NAV] HomeScreen -> PremiumPaywall (Free User Redirect)');
         navigation.navigate('PremiumPaywall');
     };
 

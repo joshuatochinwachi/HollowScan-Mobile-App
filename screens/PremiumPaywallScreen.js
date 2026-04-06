@@ -24,22 +24,33 @@ import { formatIAPPrice } from '../utils/format';
 const { width } = Dimensions.get('window');
 
 const PremiumPaywallScreen = ({ navigation }) => {
+    console.log('[NAV] Mounted: PremiumPaywallScreen');
     const { isDarkMode, purchasePremium, getPlanPrice, isPremium, isTrialEligible } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
     const [restoring, setRestoring] = useState(false);
 
     const monthlyPriceData = (() => {
-        const str = getPlanPrice('premium_monthly');
-        const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
-        const display = formatIAPPrice(str);
-        return { val, display };
+        try {
+            const str = getPlanPrice('premium_monthly') || '£4.99';
+            const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 4.99;
+            const display = formatIAPPrice(str);
+            return { val, display };
+        } catch (e) {
+            console.warn('[PAYWALL] Monthly price parse error:', e);
+            return { val: 4.99, display: '£4.99' };
+        }
     })();
 
     const yearlyPriceData = (() => {
-        const str = getPlanPrice('premium_yearly');
-        const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 0;
-        const display = formatIAPPrice(str);
-        return { val, display };
+        try {
+            const str = getPlanPrice('premium_yearly') || '£55.50';
+            const val = parseFloat(str.replace(/[^0-9.]/g, '')) || 55.50;
+            const display = formatIAPPrice(str);
+            return { val, display };
+        } catch (e) {
+            console.warn('[PAYWALL] Yearly price parse error:', e);
+            return { val: 55.50, display: '£55.50' };
+        }
     })();
 
     const yearlySavingLabel = (() => {
@@ -47,11 +58,15 @@ const PremiumPaywallScreen = ({ navigation }) => {
             const monthly = monthlyPriceData.val;
             const yearly = yearlyPriceData.val;
             if (!monthly || !yearly || monthly <= 0) return 'BEST VALUE';
+            
             const annualMonthly = monthly * 12;
+            if (annualMonthly <= 0) return 'BEST VALUE'; // ← ZERO DIVISION GUARD
+            
             const saving = Math.round(((annualMonthly - yearly) / annualMonthly) * 100);
-            if (saving > 0) return `SAVE ${saving}%`;
+            if (isFinite(saving) && saving > 0) return `SAVE ${saving}%`;
             return 'BEST VALUE';
-        } catch {
+        } catch (e) {
+            console.warn('[PAYWALL] Error calculating savings:', e);
             return 'BEST VALUE';
         }
     })();

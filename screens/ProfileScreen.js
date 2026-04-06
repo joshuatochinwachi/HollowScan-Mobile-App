@@ -394,7 +394,13 @@ const ProfileScreen = () => {
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={styles.upgradeText}>Monthly Premium • 1 Month</Text>
                                         <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' }}>
-                                            {formatIAPPrice(getPlanPrice('premium_monthly'))} / month
+                                            {(() => {
+                                                try {
+                                                    return formatIAPPrice(getPlanPrice('premium_monthly')) || '£4.99';
+                                                } catch (e) {
+                                                    return '£4.99';
+                                                }
+                                            })()} / month
                                         </Text>
                                     </View>
                                 </LinearGradient>
@@ -418,7 +424,13 @@ const ProfileScreen = () => {
                                     <View style={{ alignItems: 'center' }}>
                                         <Text style={[styles.upgradeText, { color: '#000' }]}>Yearly Premium • 1 Year (Best Value) 👑</Text>
                                         <Text style={{ color: 'rgba(0,0,0,0.6)', fontSize: 12, fontWeight: '700' }}>
-                                            {formatIAPPrice(getPlanPrice('premium_yearly'))} / year
+                                            {(() => {
+                                                try {
+                                                    return formatIAPPrice(getPlanPrice('premium_yearly')) || '£55.50';
+                                                } catch (e) {
+                                                    return '£55.50';
+                                                }
+                                            })()} / year
                                         </Text>
                                     </View>
                                 </LinearGradient>
