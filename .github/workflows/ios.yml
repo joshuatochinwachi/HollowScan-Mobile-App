@@ -47,7 +47,7 @@ jobs:
           GOOGLE_SERVICES_IOS: ${{ secrets.GOOGLE_SERVICES_IOS }}
           EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform ios --profile production --local --non-interactive
+          npx eas-cli build --platform ios --profile production --local --non-interactive --auto-increment
 
       - name: Upload iOS Archive
         if: success()
