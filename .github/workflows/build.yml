@@ -41,7 +41,7 @@ jobs:
           GOOGLE_SERVICES_ANDROID: ${{ secrets.GOOGLE_SERVICES_ANDROID }}
           EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials --auto-increment > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
+          npx eas-cli build --platform android --profile production --local --non-interactive > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
 
       - name: Upload Artifact
         if: success()
