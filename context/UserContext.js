@@ -765,6 +765,11 @@ export const UserProvider = ({ children }) => {
         }
 
         const created = new Date(createdDate);
+        if (isNaN(created.getTime())) {
+            console.log('[TRIAL][DEBUG] Not Eligible: Created date is invalid');
+            return false;
+        }
+
         const now = new Date();
         const diffInHours = Math.abs(now - created) / 36e5;
         

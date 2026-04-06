@@ -35,6 +35,7 @@ const { width } = Dimensions.get('window');
 const getRelativeTime = (dateString) => {
     if (!dateString) return 'Just now';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Just now'; // ← SAFETY GUARD
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
 
@@ -232,8 +233,10 @@ const HomeScreen = () => {
                 let currentDiscount = 0;
                 if (r > p && p > 0) {
                     currentDiscount = 100; // Profit deals bypass discount check
-                } else if (w > p && p > 0) {
+                } else if (w > p && p > 0 && w > 0) {
                     currentDiscount = Math.floor(((w - p) / w) * 100);
+                    // SAFETY: Guard against NaN or Infinite results
+                    if (!Number.isFinite(currentDiscount)) currentDiscount = 0;
                 }
 
                 if (currentDiscount < minDiscount) return;
