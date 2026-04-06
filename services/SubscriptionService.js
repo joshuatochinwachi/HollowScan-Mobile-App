@@ -138,12 +138,21 @@ class SubscriptionService {
 
                 console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
                 
-                // FIX: Latest react-native-iap requires 'skus' (array) for iOS requestPurchase
-                await requestPurchase({
+                console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
+                
+                // FIX: Xcode 16 / StoreKit 2 requires 'skus' (plural array) for all requests
+                const purchaseObject = {
                     sku: sku,
-                    andSkus: [sku] // Dual-compatibility for both older and newer bridge versions
-                });
-                console.log('[IAP] Native Apple requestPurchase sent to bridge.');
+                    skus: [sku],
+                };
+                
+                console.warn('[IAP] FINAL PAYLOAD TO APPLE:', JSON.stringify(purchaseObject));
+                
+                // FINAL FIX: Add a tiny 500ms delay to prevent race conditions on iOS 17/18
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                await requestPurchase(purchaseObject);
+                console.log('[IAP] Native Apple requestPurchase successfully triggered.');
             }
         } catch (err) {
             const errorCode = err?.code || 'UNKNOWN';
