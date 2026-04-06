@@ -31,16 +31,18 @@ jobs:
 
       - name: Inject Secrets
         run: |
-          cat << 'EOF' > google-services.json
-          ${{ secrets.GOOGLE_SERVICES_ANDROID }}
-          EOF
-          cat << 'EOF' > eas.json
-          ${{ secrets.EAS_JSON }}
-          EOF
+          # eas.json is now in git with vcsControlled: false, 
+          # but we keep this step if you want to override it via secret
+          if [ "${{ secrets.EAS_JSON }}" != "" ]; then
+            cat << 'EOF' > eas.json
+            ${{ secrets.EAS_JSON }}
+            EOF
+          fi
 
       - name: Build Android AAB
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICES_ANDROID: ${{ secrets.GOOGLE_SERVICES_ANDROID }}
           EAS_NO_VCS: 1
         run: |
           npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }

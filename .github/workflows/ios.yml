@@ -23,12 +23,6 @@ jobs:
 
       - name: Inject Secrets
         run: |
-          cat << 'EOF' > GoogleService-Info.plist
-          ${{ secrets.GOOGLE_SERVICES_IOS }}
-          EOF
-          cat << 'EOF' > eas.json
-          ${{ secrets.EAS_JSON }}
-          EOF
           echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 --decode > release.p12
           echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > release.mobileprovision
           
@@ -50,6 +44,7 @@ jobs:
       - name: Build iOS IPA (Local on GitHub)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_SERVICES_IOS: ${{ secrets.GOOGLE_SERVICES_IOS }}
           EAS_NO_VCS: 1
         run: |
           npx eas-cli build --platform ios --profile production --local --non-interactive

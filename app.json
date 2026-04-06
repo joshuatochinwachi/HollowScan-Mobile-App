@@ -47,6 +47,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "./plugins/withInjectedSecrets.js",
       [
         "expo-notifications",
         {
