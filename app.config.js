@@ -84,8 +84,7 @@ module.exports = ({ config }) => {
           "android": {
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0",
-            "kotlinVersion": "2.2.0"
+            "buildToolsVersion": "35.0.0"
           },
           "ios": {
             "useFrameworks": "static",
