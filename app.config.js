@@ -92,7 +92,19 @@ module.exports = ({ config }) => {
           }
         }
       ],
-      "react-native-iap"
+        [
+        "react-native-iap",
+        {
+          "ios": {
+            "storeKit2": true,
+            "productIds": ["premium_monthly", "premium_yearly"]
+          },
+          "android": {
+            "paymentLibrary": "play-billing",
+            "productIds": ["premium_monthly", "premium_yearly"]
+          }
+        }
+      ]
     ],
     extra: {
       eas: {
