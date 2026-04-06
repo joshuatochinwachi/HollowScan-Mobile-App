@@ -15,6 +15,7 @@ import {
   handleKilledAppNotification,
   registerForPushNotifications
 } from './services/PushNotificationService';
+import SubscriptionService from './services/SubscriptionService';
 
 // Screens
 import HomeScreen from './screens/HomeScreen';
@@ -166,6 +167,24 @@ const NavigationRoot = ({ showSplash, setShowSplash, linking }) => {
     handleKilledAppNotification();
 
     return () => cleanup();
+  }, []);
+
+  // --- IAP Initialization ---
+  React.useEffect(() => {
+    const initIAP = async () => {
+      try {
+        await SubscriptionService.initialize();
+        SubscriptionService.setupPurchaseListeners();
+      } catch (err) {
+        console.warn('[IAP] Global initialization failed:', err);
+      }
+    };
+    initIAP();
+
+    return () => {
+      SubscriptionService.removeListeners();
+      SubscriptionService.endConnection();
+    };
   }, []);
 
   // Register token when user logs in

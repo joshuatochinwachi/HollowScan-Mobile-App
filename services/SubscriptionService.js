@@ -118,13 +118,10 @@ class SubscriptionService {
                 }
 
                 await requestPurchase({
-                    type: 'subs',
-                    request: {
-                        google: {
-                            skus: [sku],
-                            subscriptionOffers: [{ sku, offerToken }],
-                        },
-                    },
+                    skus: [sku],
+                    subscriptionOffers: [{ sku, offerToken }],
+                    obfuscatedAccountIdAndroid: this.currentUserId,
+                    obfuscatedProfileIdAndroid: this.currentUserId,
                 });
             } else {
                 // iOS (Pre-flight sync to prevent 'Missing Configuration' error)
@@ -140,8 +137,11 @@ class SubscriptionService {
                 }
 
                 console.log(`[IAP] Bridge confirmed. Launching Apple sheet for: ${sku}`);
+                
+                // FIX: Latest react-native-iap requires 'skus' (array) for iOS requestPurchase
                 await requestPurchase({
-                    sku: sku
+                    sku: sku,
+                    andSkus: [sku] // Dual-compatibility for both older and newer bridge versions
                 });
                 console.log('[IAP] Native Apple requestPurchase sent to bridge.');
             }
