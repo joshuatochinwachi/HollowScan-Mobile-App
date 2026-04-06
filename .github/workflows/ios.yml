@@ -26,6 +26,9 @@ jobs:
 
       - name: Inject Secrets
         run: |
+          cat << 'EOF' > eas.json
+          ${{ secrets.EAS_JSON }}
+          EOF
           echo "${{ secrets.IOS_CERTIFICATE_BASE64 }}" | base64 --decode > release.p12
           echo "${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}" | base64 --decode > release.mobileprovision
           
@@ -43,15 +46,6 @@ jobs:
             }
           }
           EOF
-
-      - name: Bump Build Number
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          # Fetch current remote number, add 1, and set it back
-          CURRENT_V=$(npx eas-cli build:version:get --platform ios --profile production --json | jq -r '.[0].buildNumber // 41')
-          NEXT_V=$((CURRENT_V + 1))
-          npx eas-cli build:version:set --platform ios --profile production --build-number $NEXT_V
 
       - name: Build iOS IPA (Local on GitHub)
         env:

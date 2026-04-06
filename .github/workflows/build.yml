@@ -29,24 +29,11 @@ jobs:
       - name: Install EAS CLI
         run: npm install -g eas-cli
 
-      - name: Bump Build Number
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: |
-          # Fetch current remote number, add 1, and set it back
-          CURRENT_V=$(npx eas-cli build:version:get --platform android --profile production --json | jq -r '.[0].buildNumber // 41')
-          NEXT_V=$((CURRENT_V + 1))
-          npx eas-cli build:version:set --platform android --profile production --build-number $NEXT_V
-
       - name: Inject Secrets
         run: |
-          # eas.json is now in git with vcsControlled: false, 
-          # but we keep this step if you want to override it via secret
-          if [ "${{ secrets.EAS_JSON }}" != "" ]; then
-            cat << 'EOF' > eas.json
-            ${{ secrets.EAS_JSON }}
-            EOF
-          fi
+          cat << 'EOF' > eas.json
+          ${{ secrets.EAS_JSON }}
+          EOF
 
       - name: Build Android AAB
         env:
@@ -54,7 +41,7 @@ jobs:
           GOOGLE_SERVICES_ANDROID: ${{ secrets.GOOGLE_SERVICES_ANDROID }}
           EAS_NO_VCS: 1
         run: |
-          npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
+          npx eas-cli build --platform android --profile production --local --non-interactive --auto-credentials --auto-increment > build_log.txt 2>&1 || { cat build_log.txt; exit 1; }
 
       - name: Upload Artifact
         if: success()

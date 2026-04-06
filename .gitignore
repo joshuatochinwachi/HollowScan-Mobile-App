@@ -58,7 +58,7 @@ iap_implementation_plan.md
 
 
 # never forget to take this out before you build.. then untrack it using `git rm --cached eas.json` to bring it back when you're done
-eas.json
+# eas.json
 google-services.json
 # already set in github secrets for github actions/workflows
 
