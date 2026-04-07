@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
 import {
     initConnection,
-    getSubscriptions,
-    requestSubscription,
+    fetchProducts,
+    requestPurchase,
     finishTransaction,
     purchaseUpdatedListener,
     purchaseErrorListener,
@@ -74,7 +74,7 @@ class SubscriptionService {
             return [];
         }
         try {
-            const products = await getSubscriptions({ skus: itemSkus });
+            const products = await fetchProducts({ skus: itemSkus, type: 'subs' });
             console.log(`[IAP] Fetched ${products?.length || 0} subscription products.`);
             return products || [];
         } catch (err) {
@@ -123,7 +123,7 @@ class SubscriptionService {
 
     async _requestAndroid(sku, isTrial) {
         console.log(`[IAP][Android] Fetching product for SKU: ${sku}, trial: ${isTrial}`);
-        const products = await getSubscriptions({ skus: [sku] });
+        const products = await fetchProducts({ skus: [sku], type: 'subs' });
         const product = products?.find(p => p.productId === sku || p.id === sku);
 
         if (!product) {
@@ -171,17 +171,22 @@ class SubscriptionService {
             throw new Error(`Could not resolve offer token for "${sku}".`);
         }
 
-        await requestSubscription({
-            sku,
-            subscriptionOffers: [{ sku, offerToken }],
-            obfuscatedAccountIdAndroid: this.currentUserId,
-            obfuscatedProfileIdAndroid: this.currentUserId,
+        await requestPurchase({
+            request: {
+                android: {
+                    skus: [sku],
+                    subscriptionOffers: [{ sku, offerToken }],
+                    obfuscatedAccountId: this.currentUserId,
+                    obfuscatedProfileId: this.currentUserId,
+                }
+            },
+            type: 'subs'
         });
     }
 
     async _requestIOS(sku) {
         console.log(`[IAP][iOS] Pre-flight check for SKU: ${sku}`);
-        const fresh = await getSubscriptions({ skus: [sku] });
+        const fresh = await fetchProducts({ skus: [sku], type: 'subs' });
         const valid = fresh?.find(p => p.productId === sku || p.id === sku);
 
         if (!valid) {
@@ -192,9 +197,14 @@ class SubscriptionService {
 
         // Disable auto-finish so we can manually finish after backend verification.
         // Without this, iOS finishes the transaction AND our listener finishes it again = crash.
-        await requestSubscription({
-            sku,
-            andDangerouslyFinishTransactionAutomaticallyIOS: false,
+        await requestPurchase({
+            request: {
+                ios: {
+                    sku,
+                    andDangerouslyFinishTransactionAutomatically: false,
+                }
+            },
+            type: 'subs'
         });
 
         console.log('[IAP][iOS] Payment sheet triggered successfully.');
