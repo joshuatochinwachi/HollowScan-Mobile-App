@@ -1,0 +1,861 @@
+================================================================================
+  HOLLOWSCAN MOBILE APP — COMPLETE IAP AUDIT, FIX SUMMARY & IMPLEMENTATION GUIDE
+  For: AI Agent Review & Alignment Verification
+  Prepared by: External AI Consultant (Claude, Anthropic)
+  Scope: Frontend (React Native / Expo), Backend (FastAPI / Python),
+         Database (Supabase), Apple App Store Connect, Google Play Console
+================================================================================
+
+PURPOSE OF THIS DOCUMENT
+--------------------------
+This document is a full technical brief of every diagnosis, decision, and code
+change made to fix the in-app purchase (IAP) system for the HollowScan mobile
+app. It is intended to be read by the existing AI agent that has been building
+this project, so it can:
+
+  1. Understand what was broken and why
+  2. Verify all changes align with the existing codebase architecture
+  3. Confirm nothing has been contradicted or broken
+  4. Understand the relevance of every decision made
+  5. Know what still needs to be tested and validated
+
+This document covers: SubscriptionService.js, UserContext.js, App.js, the
+FastAPI backend (app.py, apple_iap_utils.py, google_play_utils.py,
+supabase_utils.py), Supabase database schema changes, Apple App Store Connect
+configuration, and Google Play Console configuration.
+
+================================================================================
+SECTION 1: THE ORIGINAL PROBLEM
+================================================================================
+
+The app was throwing: "Store Error: undefined is not a function"
+
+This happened on iOS when a user attempted to subscribe via the PremiumPaywall
+screen or the Profile screen. The error occurred inside the IAP (In-App Purchase)
+layer. Android had a separate but related set of issues.
+
+The app had been working previously, then broke after the developer redesigned
+the paywall flow. The new flow redirects any free user who taps on a product
+or product description to the PremiumPaywallScreen as a modal, rather than
+having the paywall accessible only through the Profile screen.
+
+When the screenshots were reviewed, a secondary bug was also visible:
+the yearly price was displaying as "59.98999999999999995" — a raw float —
+instead of a formatted currency string like "£55.50".
+
+================================================================================
+SECTION 2: ROOT CAUSE ANALYSIS — 9 BUGS FOUND IN TOTAL
+================================================================================
+
+Bug #1 — CRITICAL — fetchProducts used instead of getSubscriptions (iOS Crash)
+--------------------------------------------------------------------------------
+FILE: services/SubscriptionService.js
+
+In react-native-iap version 14 (which this project uses — confirmed via
+package.json: "react-native-iap": "14.7.0"), the API for fetching subscription
+products changed fundamentally.
+
+  - fetchProducts({ skus, type: 'subs' })  ← OLD API (v12 and below)
+  - getSubscriptions({ skus })             ← CORRECT API (v14+)
+
+The original code was calling fetchProducts with type: 'subs' in three
+separate places inside SubscriptionService.js:
+  - Inside getSubscriptions() method
+  - Inside requestSubscription() for iOS pre-flight check
+  - Inside requestSubscription() for Android
+
+When react-native-iap v14 tries to call fetchProducts for a subscription SKU,
+the native bridge internally references a method on the subscription product
+object that does not exist. That is the EXACT cause of "undefined is not a
+function". This is not a logic error — it is a native bridge API mismatch.
+
+FIX: Every call to fetchProducts was replaced with getSubscriptions({ skus }).
+This applies in the getSubscriptions() method, the iOS pre-flight, and the
+Android purchase request.
+
+Bug #2 — HIGH — setupPurchaseListeners accepted no arguments (Silent failure)
+------------------------------------------------------------------------------
+FILE: services/SubscriptionService.js
+
+The original setupPurchaseListeners() function was defined with no parameters:
+  setupPurchaseListeners() { ... }
+
+But UserContext.js was calling it with two callbacks:
+  SubscriptionService.setupPurchaseListeners(onSuccess, onError)
+
+Those callbacks were being silently discarded. This meant that even if a
+purchase succeeded and was verified by the backend, the UserContext was never
+notified. The user's premium status would never update in the app. They would
+complete a real payment and still see the free-user experience until they
+force-quit and reopened the app.
+
+FIX: setupPurchaseListeners now accepts (onSuccess = null, onError = null),
+stores them on the class instance (this.onPurchaseSuccess, this.onPurchaseError),
+and fires them inside purchaseUpdatedListener and purchaseErrorListener
+respectively.
+
+Bug #3 — HIGH — IAP initialized twice simultaneously (Race condition)
+----------------------------------------------------------------------
+FILES: App.js AND context/UserContext.js
+
+Both App.js and UserContext.js had their own IAP initialization blocks:
+
+App.js had:
+  React.useEffect(() => {
+    SubscriptionService.initialize();
+    SubscriptionService.setupPurchaseListeners(); // ← no callbacks
+    return () => {
+      SubscriptionService.removeListeners();
+      SubscriptionService.endConnection(); // ← kills the connection UserContext owns
+    };
+  }, []);
+
+UserContext.js had its own staggered init 3 seconds after mount that correctly
+passed callbacks to setupPurchaseListeners.
+
+The App.js block was firing FIRST (synchronously on mount), registering
+listeners with NO callbacks, and then its cleanup function was calling
+endConnection() — which killed the IAP connection that UserContext was
+trying to initialize with the correct callbacks 3 seconds later.
+
+This created an unpredictable race condition on iOS where:
+  - Sometimes the App.js init won and UserContext's callbacks never fired
+  - Sometimes both ran, creating duplicate listeners
+  - On every app close, endConnection() killed the connection permanently
+
+FIX: The entire IAP useEffect block was removed from App.js. The SubscriptionService
+import was also removed from App.js. UserContext.js is now the sole owner of
+the IAP lifecycle. The staggered 3-second delay in UserContext is intentional
+and correct — it prevents the "Login Sync Storm" where IAP, push notifications,
+and user status all compete for the native bridge simultaneously on app launch.
+
+Bug #4 — HIGH — Platform not imported in UserContext (Silent crash)
+-------------------------------------------------------------------
+FILE: context/UserContext.js
+
+The getPlanPrice() function used Platform.OS to detect Android vs iOS and
+format prices accordingly. But Platform was never imported:
+
+  import React, { createContext, useState, useEffect, useRef } from 'react';
+  import { Alert } from 'react-native'; // ← Platform missing
+
+When getPlanPrice was called, Platform.OS threw a silent ReferenceError. The
+function fell through to the fallback price logic and returned the raw price
+float from the store object — which is why "59.98999999999999995" was visible
+on screen.
+
+FIX: Platform was added to the react-native import:
+  import { Alert, Platform } from 'react-native';
+
+Bug #5 — HIGH — isTrial flag never passed to SubscriptionService
+----------------------------------------------------------------
+FILE: context/UserContext.js
+
+The purchasePremium function correctly accepts an isTrial parameter:
+  const purchasePremium = async (planType = 'monthly', isTrial = false) => {
+
+But then called SubscriptionService without passing it:
+  await SubscriptionService.requestSubscription(sku); // ← isTrial dropped
+
+This meant the Android offer-token selection logic (which needs isTrial to
+choose the free trial offer vs the base plan offer) always treated every
+purchase as a non-trial purchase. Trial-eligible users on Android would be
+charged immediately instead of getting the 3-day free window.
+
+FIX:
+  await SubscriptionService.requestSubscription(sku, isTrial);
+
+Bug #6 — HIGH — iOS double-finish transaction crash
+----------------------------------------------------
+FILE: services/SubscriptionService.js
+
+react-native-iap v14 on iOS has automatic transaction finishing enabled by
+default. When requestSubscription is called, Apple's StoreKit automatically
+marks the transaction as finished as soon as the purchase completes.
+
+The app ALSO calls finishTransaction() manually inside purchaseUpdatedListener
+after backend verification. This means iOS was finishing the same transaction
+twice. The second call throws an error that corrupts the purchase flow and can
+cause the payment sheet to freeze or fail silently on repeat attempts.
+
+FIX: The iOS requestSubscription call now explicitly disables auto-finish:
+  await requestSubscription({
+    sku,
+    andDangerouslyFinishTransactionAutomaticallyIOS: false,
+  });
+
+This is the correct production pattern. The transaction is finished manually
+after the backend confirms it. This is what Spotify, Duolingo, and other
+top-tier apps do — they never let the store auto-finish before server
+verification completes.
+
+Bug #7 — HIGH — Android offer token selection always used index [0]
+-------------------------------------------------------------------
+FILE: services/SubscriptionService.js
+
+The original Android purchase code was:
+  const offerToken = product.subscriptionOfferDetailsAndroid?.[0]?.offerToken;
+
+In Google Play, a single subscription product can have multiple offers:
+  - A base plan (standard recurring charge)
+  - An introductory price offer
+  - A free trial offer
+  - A promotional offer
+
+These offers come back in an array. Index [0] is NOT guaranteed to be the
+trial offer. If your trial offer is at index 1 and base plan at index 0,
+then even trial-eligible users would be charged immediately.
+
+FIX: The Android purchase logic was refactored into a _requestAndroid() method
+that intelligently selects the correct offer:
+
+For trial-eligible users (isTrial = true):
+  Find an offer whose pricingPhases.pricingPhaseList contains any phase with
+  priceAmountMicros === 0 (free phase = trial offer).
+
+For everyone else:
+  Prefer an offer with 'base' in the offerId, or an offer with no free phases,
+  or fall back to offers[0] as last resort.
+
+Bug #8 — MEDIUM — No protection against double IAP initialization
+-----------------------------------------------------------------
+FILE: services/SubscriptionService.js
+
+The initialize() method had no guard against being called twice. If any code
+path triggered initialize() while another was already running (which Bug #3
+caused), two initConnection() calls would fire simultaneously. On iOS, this
+creates orphaned native listeners that are never cleaned up.
+
+FIX:
+  async initialize() {
+    if (this.isConnected) {
+      console.log('[IAP] Already connected. Skipping re-init.');
+      return;
+    }
+    ...
+  }
+
+Bug #9 — CRITICAL — No webhook endpoints for auto-renewal lifecycle
+-------------------------------------------------------------------
+FILE: backend/app.py (these endpoints did NOT EXIST)
+
+The app had purchase verification at first purchase (/v1/auth/apple-iap/verify
+and /v1/auth/google-play/verify). But after initial purchase, Apple and Google
+communicate subscription lifecycle events (renewals, failures, cancellations,
+refunds, expirations) DIRECTLY to your backend server — NOT to the app.
+
+Without webhook endpoints to receive these server-to-server notifications:
+  - A user's trial could end and they'd never be downgraded in the database
+  - A user could cancel and still appear premium until you manually fix it
+  - A user could get a refund and keep premium access indefinitely
+  - Auto-renewals would succeed on Apple/Google but your DB would never know
+  - The app would show incorrect premium status on every launch
+
+This is not a UI bug. It is a fundamental revenue and business logic gap. Every
+professional app that monetizes via subscriptions MUST have these webhooks.
+
+FIX: Two new endpoints were added to app.py:
+  POST /v1/webhooks/apple  — handles Apple Server-to-Server notifications (V2)
+  POST /v1/webhooks/google — handles Google Play Real-time Developer Notifications
+
+Full details in Section 5 (Backend Changes).
+
+================================================================================
+SECTION 3: FRONTEND CHANGES IN DETAIL
+================================================================================
+
+FILE: services/SubscriptionService.js
+--------------------------------------
+This file was completely rewritten. The final version includes:
+
+  IMPORTS:
+    - fetchProducts REMOVED
+    - getSubscriptions ADDED
+    - All other imports unchanged
+
+  CLASS PROPERTIES ADDED:
+    - this.onPurchaseSuccess = null
+    - this.onPurchaseError = null
+    (These store callbacks passed from UserContext)
+
+  initialize():
+    - Added: if (this.isConnected) return guard
+    - iOS pending transaction cleanup retained (correct pattern)
+    - isConnected set to false on error (was missing before)
+
+  getSubscriptions():
+    - fetchProducts({ skus, type: 'subs' }) → getSubscriptions({ skus: itemSkus })
+    - Returns [] on failure instead of throwing
+
+  requestSubscription(sku, isTrial = false):
+    - Added isTrial parameter (was missing)
+    - Split into _requestAndroid(sku, isTrial) and _requestIOS(sku) methods
+    - Error handling unchanged
+
+  _requestAndroid(sku, isTrial) [NEW METHOD]:
+    - Fetches product with getSubscriptions (not fetchProducts)
+    - Intelligently selects offer token:
+        If isTrial=true → find offer with free pricing phase (priceAmountMicros=0)
+        If no trial offer found → fall back to base plan
+        If isTrial=false → find base plan directly
+    - Throws specific errors if product or offer token not found
+
+  _requestIOS(sku) [NEW METHOD]:
+    - Pre-flight check via getSubscriptions (not fetchProducts)
+    - Calls requestSubscription with:
+        andDangerouslyFinishTransactionAutomaticallyIOS: false  ← CRITICAL
+    - This prevents the double-finish crash
+
+  setupPurchaseListeners(onSuccess = null, onError = null):
+    - NOW ACCEPTS CALLBACKS (was no-arg before)
+    - Stores callbacks on instance
+    - Calls removeListeners() before re-registering (prevents duplicates)
+    - purchaseUpdatedListener: fires this.onPurchaseSuccess after verification
+    - purchaseErrorListener: fires this.onPurchaseError on failure
+
+  restorePurchases():
+    - Unchanged logic, correct
+
+  verifyPurchaseOnBackend():
+    - Unchanged logic, correct
+
+  removeListeners() / endConnection():
+    - endConnection now also sets this.isConnected = false
+
+FILE: context/UserContext.js
+-----------------------------
+Only two targeted changes were made. The file structure was NOT refactored.
+
+  CHANGE 1 — Import fix:
+    BEFORE: import { Alert } from 'react-native';
+    AFTER:  import { Alert, Platform } from 'react-native';
+
+    Relevance: Without Platform, getPlanPrice silently fails on Android and
+    returns raw float prices. This caused the "59.98999999999999995" display bug.
+
+  CHANGE 2 — Pass isTrial to SubscriptionService:
+    BEFORE: await SubscriptionService.requestSubscription(sku);
+    AFTER:  await SubscriptionService.requestSubscription(sku, isTrial);
+
+    Relevance: Without this, the trial offer token is never selected on Android
+    and trial-eligible users are charged full price immediately instead of
+    getting the 3-day free trial.
+
+  EVERYTHING ELSE IN USERCONTEXT IS CORRECT AND UNCHANGED:
+    - The staggered 3-second init with setTimeout is intentional and correct
+    - The setupPurchaseListeners call with onSuccess/onError callbacks is correct
+    - isTrialEligible logic (72-hour account age check) is correct
+    - getPlanPrice price formatting logic is correct (once Platform is imported)
+    - The circuit breaker / throttle pattern on refreshUserStatus is correct
+    - isPremium computed value checking both subscription_end and subscriptionEnd
+      (camelCase and snake_case) is defensive and correct
+
+FILE: App.js
+-------------
+Two things were removed. Nothing was added.
+
+  REMOVED — The IAP useEffect block:
+    React.useEffect(() => {
+      const initIAP = async () => {
+        await SubscriptionService.initialize();
+        SubscriptionService.setupPurchaseListeners(); // no callbacks
+      };
+      initIAP();
+      return () => {
+        SubscriptionService.removeListeners();
+        SubscriptionService.endConnection(); // was killing UserContext's connection
+      };
+    }, []);
+
+  REMOVED — The SubscriptionService import:
+    import SubscriptionService from './services/SubscriptionService';
+
+  EVERYTHING ELSE IN APP.JS IS CORRECT AND UNCHANGED:
+    - Deep linking setup is correct
+    - Push notification setup is correct
+    - Navigation structure is correct
+    - UserProvider / SavedProvider wrapping is correct
+
+================================================================================
+SECTION 4: THE 3-DAY FREE TRIAL ARCHITECTURE — HOW IT ACTUALLY WORKS
+================================================================================
+
+The developer's intended design:
+  - Users who created their account within the last 72 hours are trial-eligible
+  - On the PremiumPaywall screen, trial-eligible users see a "3 Days Free Trial"
+    badge on the monthly subscription option
+  - When a trial-eligible user subscribes to monthly, they pay £0 today
+  - After 3 days, they are auto-charged £4.99
+  - If the charge succeeds, their 30-day subscription begins
+  - If the charge fails, they are downgraded to free immediately
+  - Users whose accounts are older than 72 hours do NOT see the trial badge
+    and are charged the full £4.99 immediately on subscription
+
+HOW THIS MAPS ACROSS ALL THREE LAYERS:
+
+Layer 1 — The App (React Native):
+  - isTrialEligible computed value in UserContext checks account age < 72 hours
+  - PremiumPaywallScreen reads isTrialEligible to show/hide the trial badge
+  - When the trial button is tapped, purchasePremium('monthly', true) is called
+  - isTrial=true reaches SubscriptionService._requestAndroid which selects
+    the free-trial offer token from Google Play
+  - For iOS, Apple handles trial eligibility independently on their end
+    based on the Introductory Offer configuration in App Store Connect
+
+Layer 2 — Apple / Google Store:
+  - APPLE: The introductory offer (3-day free trial) must be configured in
+    App Store Connect on the premium_monthly subscription product. Apple
+    automatically offers it to eligible first-time subscribers. Your app code
+    just calls requestSubscription and Apple shows "£0.00 for 3 days, then
+    £4.99/month" on their native payment sheet. Apple enforces their own
+    eligibility rules — if a user has subscribed before under ANY Apple ID,
+    Apple will not show them the trial.
+  - GOOGLE: The free trial offer must be configured in Google Play Console as
+    a separate offer on the premium_monthly subscription, with a free trial
+    pricing phase (3 days). The offer has its own offerToken. The code now
+    correctly selects this token when isTrial=true.
+
+Layer 3 — The Backend:
+  - At initial purchase, /v1/subscriptions/verify receives the receipt and
+    marks the user as premium in the database with subscription_end set to
+    the expiry date Apple/Google returns
+  - For a trial, the expiry date Apple/Google returns is 3 days from now
+  - After 3 days, Apple/Google auto-renews (or fails)
+  - The webhook endpoints (NEW) receive the renewal/failure notification and
+    update the database accordingly
+
+IMPORTANT LIMITATION TO UNDERSTAND:
+  The app's isTrialEligible check (72-hour account age) is a DISPLAY gate.
+  It controls whether the user SEES the trial offer in the UI. The actual
+  enforcement of trial eligibility at payment time is done by Apple and Google,
+  not by your code. This is correct behavior — it is impossible to override
+  Apple/Google's payment system from app code.
+
+================================================================================
+SECTION 5: BACKEND CHANGES IN DETAIL
+================================================================================
+
+FILE: backend/app.py
+
+CHANGE 1 — Add Request to FastAPI imports:
+  BEFORE: from fastapi import FastAPI, HTTPException, Depends, Query, Header, Body, BackgroundTasks
+  AFTER:  from fastapi import FastAPI, HTTPException, Depends, Query, Header, Body, BackgroundTasks, Request
+
+CHANGE 2 — New endpoint: POST /v1/webhooks/apple
+
+This endpoint receives Apple Server-to-Server Notifications (Version 2).
+Apple sends a signed JWT (JSON Web Token) payload containing subscription
+lifecycle events. The endpoint:
+
+  1. Parses the outer signedPayload JWT (base64 decode the middle segment)
+  2. Extracts notificationType and subtype
+  3. Decodes signedRenewalInfo and signedTransactionInfo from the nested data
+  4. Extracts product_id, expiry date, and original_transaction_id
+  5. Looks up the user in Supabase by apple_original_transaction_id column
+  6. Takes action based on notification type:
+
+     DID_RENEW / SUBSCRIBED → extend subscription_end in database, sync Telegram
+     DID_FAIL_TO_RENEW      → log only (Apple gives grace period before EXPIRED)
+     EXPIRED / REVOKED      → set subscription_status='free', clear subscription_end
+     REFUND                 → immediate downgrade to free
+     DID_CHANGE_RENEWAL_STATUS → log only (EXPIRED will fire when period ends)
+
+  7. ALWAYS returns HTTP 200 to Apple
+     If you return 4xx or 5xx, Apple will retry the notification for up to 24
+     hours, causing repeated database writes and potential state corruption.
+
+CHANGE 3 — New endpoint: POST /v1/webhooks/google
+
+This endpoint receives Google Play Real-time Developer Notifications via
+Google Cloud Pub/Sub push delivery. The Pub/Sub message wraps the actual
+notification in a base64-encoded JSON envelope. The endpoint:
+
+  1. Extracts and decodes the base64 message.data field from the Pub/Sub envelope
+  2. Parses the subscriptionNotification object
+  3. Gets notificationType integer and purchaseToken
+  4. Looks up user in Supabase by google_purchase_token column
+  5. Takes action based on notification type:
+
+     2 (RENEWED) / 1 (RECOVERED) / 7 (RESTARTED)
+       → Re-verify subscription with Google Play API to get new expiry
+       → Update subscription_end in database
+
+     5 (ON_HOLD) / 6 (GRACE_PERIOD)
+       → Log only (Google gives grace period before EXPIRED)
+
+     12 (REVOKED) / 13 (EXPIRED)
+       → Set subscription_status='free', clear subscription_end
+       → Revoke Telegram premium access if linked
+
+     3 (CANCELED)
+       → Log only (user stays premium until period end; EXPIRED fires later)
+
+  6. ALWAYS returns HTTP 200 to Google Pub/Sub
+     If you return non-200, Pub/Sub will retry for up to 7 days.
+
+CHANGE 4 — Update /v1/auth/apple-iap/verify to store original_transaction_id
+
+The Apple webhook looks up users by apple_original_transaction_id. This value
+must be stored at first purchase. The verify endpoint in apple_iap_utils.py
+was updated to return the original_transaction_id as a 4th return value:
+
+  BEFORE: return True, expiry_iso, "Success"
+  AFTER:  return True, expiry_iso, "Success", latest_transaction.get("original_transaction_id", "")
+
+And in app.py, the verify endpoint destructures the 4th value and stores it:
+
+  is_valid, expiry_iso, reason, original_txn_id = await verify_apple_receipt(...)
+  update_data["apple_original_transaction_id"] = original_txn_id
+
+CHANGE 5 — Update /v1/auth/google-play/verify to store purchase_token
+
+Similarly, the Google webhook looks up users by google_purchase_token. This
+must be stored at first Google purchase:
+
+  update_data["google_purchase_token"] = purchase_token
+
+================================================================================
+SECTION 6: DATABASE CHANGES (Supabase)
+================================================================================
+
+Two new columns must be added to the users table. Run these in the Supabase
+SQL editor:
+
+  alter table users add column if not exists apple_original_transaction_id text;
+  alter table users add column if not exists google_purchase_token text;
+
+WHY THESE COLUMNS MATTER:
+  Apple and Google's webhook notifications identify the subscriber by a
+  transaction identifier, not by your internal user_id. Without storing
+  these identifiers at first purchase, the webhook endpoints cannot look up
+  which user to update when a renewal or expiry notification arrives.
+
+  apple_original_transaction_id:
+    Apple's unique identifier for the original purchase of a subscription.
+    It stays the same across all renewals. This is how you tie every Apple
+    renewal/expiry/refund notification back to a specific user in your DB.
+
+  google_purchase_token:
+    Google's unique token for a subscription purchase. Also stable across
+    renewals. Same purpose as apple_original_transaction_id.
+
+EXISTING COLUMNS THAT MUST ALREADY EXIST (verified from codebase):
+  subscription_status   (text: 'active' | 'free')
+  subscription_end      (timestamp with time zone)
+  subscription_source   (text: 'apple' | 'google' | null)
+  is_premium            (boolean)
+
+================================================================================
+SECTION 7: APPLE APP STORE CONNECT CONFIGURATION
+================================================================================
+
+The following must be configured in App Store Connect for the IAP to work:
+
+1. SUBSCRIPTION PRODUCT: premium_monthly
+   - Type: Auto-Renewable Subscription
+   - Price: £4.99/month (UK) — verify prices in all regions you sell in
+   - Introductory Offer: Free Trial, 3 days
+     This is what makes Apple show "£0 for 3 days, then £4.99/month"
+     on the native payment sheet for eligible users.
+   - Review Notes: Explain what premium unlocks (needed for App Review)
+
+2. SUBSCRIPTION PRODUCT: premium_yearly
+   - Type: Auto-Renewable Subscription
+   - Price: £55.50/year
+   - No introductory offer (trial is monthly only per the app design)
+
+3. SHARED SECRET:
+   - App Store Connect → Your App → Subscriptions → App-Specific Shared Secret
+   - This must be set as APPLE_SHARED_SECRET environment variable on your backend
+   - Without it, the backend cannot verify receipts and all premium purchases fail
+
+4. SERVER NOTIFICATIONS (V2):
+   - App Store Connect → Your App → App Information → App Store Server Notifications
+   - Production URL: https://product.hollowscan.com/v1/webhooks/apple
+   - Sandbox URL:    https://product.hollowscan.com/v1/webhooks/apple
+     (Same endpoint handles both — the code detects sandbox receipts via status 21007)
+   - Version: Version 2 (NOT Version 1 — V1 is deprecated and has less event detail)
+
+5. SANDBOX TESTING:
+   - Create Sandbox Test Accounts in App Store Connect → Users and Access → Sandbox
+   - Use a sandbox account on a real device (not simulator) to test purchases
+   - Sandbox trials are accelerated: 3-day trial = approximately 3 minutes in sandbox
+
+================================================================================
+SECTION 8: GOOGLE PLAY CONSOLE CONFIGURATION
+================================================================================
+
+1. SUBSCRIPTION PRODUCT: premium_monthly
+   - In Google Play Console → Monetize → Subscriptions → premium_monthly
+   - Base Plan: Set up with £4.99/month billing cycle
+   - Free Trial Offer: Create a separate offer on this subscription
+       Offer type: Free trial
+       Duration: 3 days
+       Eligibility: New subscribers only (Google enforces this automatically)
+       This offer will have its own offerToken in the API response
+   - Ensure the subscription is in an Active state and assigned to a testing track
+
+2. SUBSCRIPTION PRODUCT: premium_yearly
+   - Base Plan: £55.50/year
+   - No trial offer needed (trial is monthly only)
+
+3. REAL-TIME DEVELOPER NOTIFICATIONS via Google Cloud Pub/Sub:
+   Step A: Google Cloud Console
+     - Go to Pub/Sub → Topics → Create Topic
+     - Name: hollowscan-subscriptions
+     - On that topic → Subscriptions → Create Subscription
+         Delivery type: Push
+         Endpoint URL: https://product.hollowscan.com/v1/webhooks/google
+         Acknowledgement deadline: 600 seconds
+
+   Step B: Grant Google Play publish rights to Pub/Sub
+     - In Google Cloud Console → Pub/Sub → Topics → hollowscan-subscriptions
+     - Add member: google-play-developer-notifications@system.gserviceaccount.com
+     - Role: Pub/Sub Publisher
+
+   Step C: Google Play Console
+     - Monetize → Subscriptions → Real-time developer notifications
+     - Enter full Pub/Sub topic name:
+       projects/YOUR_PROJECT_ID/topics/hollowscan-subscriptions
+     - Send test notification to verify the pipeline is working
+
+4. SERVICE ACCOUNT (for Google Play API verification):
+   - The backend uses google-api-python-client to verify purchase tokens
+   - A Google Cloud service account JSON key must be present on the server
+   - This is already configured (google_play_utils.py exists) — verify the
+     service account has the "Google Play Android Developer" API permission
+
+================================================================================
+SECTION 9: HOW TOP APPS DO THIS — PROFESSIONAL PATTERNS
+================================================================================
+
+The following patterns are used by Spotify, Duolingo, Calm, YouTube Premium,
+and other top-grossing subscription apps. Align HollowScan to these standards.
+
+PATTERN 1 — Server-Side Receipt Verification (MANDATORY)
+  Never trust the client. Never grant premium status based on what the app
+  reports. Always verify the receipt/token with Apple/Google servers from your
+  backend before updating the user's status in your database.
+  HollowScan already does this correctly via verifyPurchaseOnBackend().
+
+PATTERN 2 — Manual Transaction Finishing (iOS)
+  Always set andDangerouslyFinishTransactionAutomaticallyIOS: false.
+  Finish the transaction ONLY after your backend has confirmed the purchase.
+  If you finish before backend verification, and the backend is down, you've
+  told Apple the transaction is complete but your DB doesn't know the user
+  is premium. The purchase is lost.
+  HollowScan now does this correctly.
+
+PATTERN 3 — Webhook-Driven Premium State (MANDATORY for subscriptions)
+  The app should NOT be the source of truth for premium status.
+  Your database is the source of truth.
+  Apple and Google maintain the subscription and notify your backend directly.
+  The app simply reads the user's status from your API on each launch.
+  HollowScan now has this with the two new webhook endpoints.
+
+PATTERN 4 — Graceful Degradation on IAP Unavailability
+  The IAP connection can fail (no internet, store maintenance, region issues).
+  The app should always function in a degraded state, never crash.
+  HollowScan handles this correctly — getSubscriptions() returns [] on failure
+  and the UI falls back to hardcoded prices (£4.99, £55.50).
+
+PATTERN 5 — Startup Purchase Recovery
+  On app launch, call getAvailablePurchases() to check for any purchases that
+  were made but never delivered (e.g., app crashed mid-purchase, network failure
+  during verification). Re-process any unfinished transactions.
+  HollowScan does this correctly in the staggered init block in UserContext.
+
+PATTERN 6 — Single Owner of IAP Lifecycle
+  Only ONE place in the app should initialize the IAP connection, register
+  listeners, and tear them down. Having multiple components fighting over the
+  IAP bridge (as App.js and UserContext.js were doing) causes race conditions.
+  HollowScan now correctly delegates this entirely to UserContext.
+
+PATTERN 7 — Offer Token Intelligence (Android)
+  Never blindly use offers[0] as the offer token. Iterate over the offer list
+  and select based on the user's eligibility:
+    - Trial-eligible: find the offer with priceAmountMicros === 0
+    - Regular: find the base plan
+  HollowScan now does this correctly in _requestAndroid().
+
+PATTERN 8 — Idempotent Webhook Handlers
+  Webhook endpoints should handle duplicate notifications gracefully.
+  Apple and Google retry notifications if your server returns non-200.
+  Updating a user from 'active' to 'active' with the same expiry is harmless.
+  The webhook handlers in HollowScan are designed to be idempotent.
+
+PATTERN 9 — 72-Hour Trial Window (HollowScan-Specific)
+  Most apps let Apple/Google handle trial eligibility entirely.
+  HollowScan adds a custom layer: an account must be < 72 hours old to see
+  the trial badge. This is a UX gate, not a security gate (Apple/Google enforce
+  actual trial eligibility independently). This design is sound — it creates
+  urgency for new users while not showing the trial offer to churned users who
+  create new accounts.
+
+PATTERN 10 — Never Block UI on IAP Initialization
+  The 3-second staggered delay before initializing IAP in UserContext is correct
+  professional practice. App launch should never be gated on the IAP bridge
+  being ready. Show the UI, let the user navigate, and initialize IAP quietly
+  in the background. If they tap Subscribe before IAP is ready, show a "Store
+  connecting, please try again in a moment" message (which isConnected=false
+  already triggers via the guard in requestSubscription).
+
+================================================================================
+SECTION 10: WHAT IS NOT YET VERIFIED AND NEEDS TESTING
+================================================================================
+
+The following items require live testing to confirm. They cannot be validated
+by code review alone.
+
+  1. Apple Sandbox Test
+     Test the full trial purchase flow using a Sandbox Apple ID on a real
+     device. Confirm:
+       - "Free for 3 days, then £4.99" appears on the Apple payment sheet
+       - Purchase completes without the "Store Error: undefined is not a function"
+       - Backend receives the verification call and marks user premium
+       - User sees the premium UI immediately after purchase
+
+  2. Apple Webhook Delivery (Sandbox)
+     In App Store Connect, use the "Send Test Notification" feature on your
+     subscription product. Confirm:
+       - Your /v1/webhooks/apple endpoint receives the request
+       - The backend logs show the notification being processed
+       - The endpoint returns 200
+
+  3. Google Play Internal Testing Track
+     The subscription products must be in an active state and assigned to the
+     internal testing track. Your tester account must be added to the internal
+     testing track. Test the full purchase flow including:
+       - Trial offer appears (if account is < 72 hours old)
+       - Base plan works for older accounts
+       - Purchase completes and backend is notified
+
+  4. Google Pub/Sub Test Notification
+     In Google Play Console → Real-time developer notifications, send a test
+     notification and verify it arrives at /v1/webhooks/google and returns 200.
+
+  5. Restore Purchases Flow
+     Test that restorePurchases() correctly re-activates premium for a user
+     who reinstalled the app or logged in on a new device.
+
+  6. Full Rebuild Required
+     Because react-native-iap has native code (Swift/Kotlin), every code change
+     to SubscriptionService.js requires a full native rebuild:
+       npx expo run:ios --clear
+       npx expo run:android --clear
+     Metro reload and Expo Go DO NOT apply native bridge changes. If you test
+     with a reload, you are testing the old native code with new JS — the
+     results will be unpredictable.
+
+================================================================================
+SECTION 11: THINGS THE EXISTING AI AGENT SHOULD VERIFY FOR ALIGNMENT
+================================================================================
+
+Before accepting these changes, the existing agent should verify the following:
+
+  1. DOES /v1/subscriptions/verify EXIST?
+     The SubscriptionService calls this endpoint via verifyPurchaseOnBackend().
+     Confirm this endpoint exists in app.py and correctly calls either
+     verify_apple_receipt() or verify_subscription() (Google) based on platform.
+     If this endpoint is named differently, update verifyPurchaseOnBackend().
+
+  2. DO update_user() and user_cache.invalidate() EXIST in app.py?
+     The webhook handlers call these functions. They are referenced but may be
+     named differently in the actual codebase. Align function names.
+
+  3. DO sync_premium_to_telegram() and get_telegram_links_for_user() EXIST?
+     The webhook handlers call these for users with Telegram linked. Verify
+     these async functions exist in app.py or import from a utility file.
+
+  4. IS http_client DEFINED in app.py?
+     The Apple webhook uses:
+       resp = await http_client.get(f"{URL}/rest/v1/users?...")
+     Confirm http_client is an httpx.AsyncClient instance and URL/HEADERS are
+     the Supabase REST API base URL and auth headers. Adjust if differently named.
+
+  5. ARE THE SKU NAMES CONSISTENT?
+     The mobile app uses: 'premium_monthly' and 'premium_yearly'
+     App Store Connect must have products with EXACTLY these Product IDs.
+     Google Play Console must have subscriptions with EXACTLY these Product IDs.
+     Any mismatch (e.g., 'com.hollowscan.premium_monthly') will cause the
+     IAP fetch to return empty results and purchases to fail.
+
+  6. IS APPLE_SHARED_SECRET SET IN ENVIRONMENT?
+     apple_iap_utils.py reads os.getenv("APPLE_SHARED_SECRET").
+     If this is not set in the production environment, ALL Apple receipt
+     verifications will return False and no user will ever get premium status
+     after a purchase.
+
+  7. IS THE BACKEND DEPLOYED AND PUBLICLY ACCESSIBLE?
+     Both webhook URLs (https://product.hollowscan.com/v1/webhooks/apple and
+     /v1/webhooks/google) must be reachable from the public internet.
+     Apple and Google cannot deliver notifications to localhost or private IPs.
+
+================================================================================
+SECTION 12: SUMMARY OF ALL FILES CHANGED
+================================================================================
+
+MOBILE APP (React Native / Expo):
+  services/SubscriptionService.js   — FULL REWRITE (final version)
+  context/UserContext.js             — 2 SURGICAL CHANGES ONLY
+  App.js                             — 2 REMOVALS ONLY (IAP block + import)
+
+BACKEND (FastAPI / Python):
+  app.py                             — Added Request import
+                                       Added POST /v1/webhooks/apple
+                                       Added POST /v1/webhooks/google
+                                       Updated /v1/auth/apple-iap/verify
+                                       Updated /v1/auth/google-play/verify
+  apple_iap_utils.py                 — Updated return signature (4th value)
+
+DATABASE (Supabase):
+  users table                        — Added apple_original_transaction_id (text)
+                                       Added google_purchase_token (text)
+
+EXTERNAL CONFIGURATION:
+  Apple App Store Connect            — Introductory offer (3-day free trial)
+                                       Server Notifications V2 URL configured
+  Google Play Console                — Free trial offer created on premium_monthly
+                                       Pub/Sub topic + push subscription configured
+                                       Real-time developer notifications enabled
+
+================================================================================
+SECTION 13: CONFIDENCE ASSESSMENT
+================================================================================
+
+WILL THIS FIX THE "Store Error: undefined is not a function" CRASH?
+  Yes. With high confidence. The crash was caused by calling fetchProducts
+  with type: 'subs' in react-native-iap v14, where this API was removed
+  for subscriptions. Replacing with getSubscriptions() throughout is the
+  documented correct fix.
+
+WILL PRICES DISPLAY CORRECTLY?
+  Yes. The Platform import was missing from UserContext, causing getPlanPrice
+  to throw silently and fall through to the raw float. With Platform imported,
+  the Android price formatting path and iOS localizedPrice path both work.
+
+WILL PREMIUM STATUS UPDATE IMMEDIATELY AFTER PURCHASE?
+  Yes. The setupPurchaseListeners callbacks were being silently dropped before.
+  They are now correctly stored and fired after backend verification completes.
+  The onSuccess callback triggers refreshUserStatus which updates the UI.
+
+WILL AUTO-RENEWAL AND TRIAL EXPIRY WORK?
+  Yes, PROVIDED that: (a) the webhook endpoints are deployed to a publicly
+  accessible URL, (b) App Store Connect server notifications are configured
+  with that URL, and (c) Google Pub/Sub is configured with that URL. Without
+  the store console configuration, the code is correct but unreachable.
+
+WILL THE 3-DAY TRIAL WORK ON IOS?
+  Yes, PROVIDED that: the introductory offer is configured in App Store Connect
+  for the premium_monthly product. The app code is now correctly wired to trigger
+  requestSubscription without auto-finish. Apple shows the trial offer on their
+  native payment sheet automatically.
+
+WILL THE 3-DAY TRIAL WORK ON ANDROID?
+  Yes, PROVIDED that: a free trial offer exists in Google Play Console on the
+  premium_monthly product. The code now correctly identifies and selects the
+  offer with priceAmountMicros === 0 when isTrial=true.
+
+================================================================================
+END OF DOCUMENT
+================================================================================

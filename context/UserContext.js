@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Constants from '../Constants';
@@ -698,7 +698,7 @@ export const UserProvider = ({ children }) => {
         try {
             SubscriptionService.setCurrentUserId(user.id);
             console.log(`[IAP] UserContext: Requesting ${isTrial ? 'TRIAL' : 'PURCHASE'} for ${sku}`);
-            await SubscriptionService.requestSubscription(sku);
+            await SubscriptionService.requestSubscription(sku, isTrial);
             return { success: true }; 
         } catch (error) {
             return { success: false, message: error.message };
