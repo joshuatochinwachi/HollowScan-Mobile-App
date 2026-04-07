@@ -7,7 +7,8 @@ import {
     purchaseUpdatedListener,
     purchaseErrorListener,
     getAvailablePurchases,
-    endConnection
+    endConnection,
+    getReceiptIOS
 } from 'react-native-iap';
 import Constants from '../Constants';
 
@@ -142,9 +143,10 @@ class SubscriptionService {
         if (isTrial) {
             selectedOffer = offers.find(offer => {
                 const phases = offer.pricingPhases?.pricingPhaseList || [];
-                return phases.some(
-                    phase => phase.priceAmountMicros === 0 || phase.priceAmountMicros === '0'
-                );
+                const isFree = phases.some(phase => phase.priceAmountMicros === 0 || phase.priceAmountMicros === '0');
+                const hasTrialId = (offer.offerId || '').toLowerCase().includes('trial');
+                const hasTrialTag = (offer.offerTags || []).some(tag => tag.toLowerCase().includes('trial'));
+                return isFree || hasTrialId || hasTrialTag;
             });
             if (selectedOffer) {
                 console.log(`[IAP][Android] Trial offer selected: ${selectedOffer.offerId}`);
@@ -235,8 +237,8 @@ class SubscriptionService {
         this.removeListeners();
 
         this.purchaseUpdateSubscription = purchaseUpdatedListener(async (purchase) => {
-            const receipt = purchase.transactionReceipt;
-            console.log('[IAP] Purchase update received.');
+            const receipt = purchase.transactionReceipt || purchase.purchaseToken;
+            console.log('[IAP] Purchase update received.', { hasReceipt: !!receipt });
 
             if (receipt) {
                 try {
@@ -269,15 +271,27 @@ class SubscriptionService {
             return { success: false, message: 'User not logged in' };
         }
         try {
+            // Android uses purchaseToken (JWS/Token). iOS uses base64 Receipt string for legacy backend support.
+            let iosReceipt = null;
+            if (Platform.OS === 'ios') {
+                try {
+                    iosReceipt = await getReceiptIOS();
+                } catch (e) {
+                    console.warn('[IAP] Failed to get base64 receipt:', e);
+                }
+            }
+            
+            const token = purchase.transactionReceipt || purchase.purchaseToken;
+            
             const requestBody = Platform.OS === 'ios'
                 ? {
                     user_id: this.currentUserId,
-                    receipt_data: purchase.transactionReceipt,
+                    receipt_data: iosReceipt || token,
                     product_id: purchase.productId,
                 }
                 : {
                     user_id: this.currentUserId,
-                    purchase_token: purchase.purchaseToken,
+                    purchase_token: token,
                     product_id: purchase.productId,
                 };
 

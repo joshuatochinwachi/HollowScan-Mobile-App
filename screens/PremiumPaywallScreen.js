@@ -25,7 +25,7 @@ const { width } = Dimensions.get('window');
 
 const PremiumPaywallScreen = ({ navigation }) => {
     console.log('[NAV] Mounted: PremiumPaywallScreen');
-    const { isDarkMode, purchasePremium, getPlanPrice, isPremium, isTrialEligible } = useContext(UserContext);
+    const { isDarkMode, purchasePremium, getPlanPrice, isPremium, isTrialEligible, subscriptionPlans } = useContext(UserContext);
     const [loading, setLoading] = useState(false);
     const [restoring, setRestoring] = useState(false);
 
@@ -267,13 +267,14 @@ const PremiumPaywallScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
                     
-                    {/* 🕵️ Diagnostic Truth-Mode */}
-                    <View style={{ marginTop: 20, padding: 10, backgroundColor: colors.border + '20', borderRadius: 8 }}>
-                        <Text style={{ fontSize: 10, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
-                            [DEBUG] ID: com.kttylabs.app | 
-                            Fetch Status: {monthlyPriceData.val !== 4.99 || yearlyPriceData.val !== 55.50 ? 'LIVE' : 'FALLBACK'}
-                        </Text>
-                    </View>
+                    {/* 🕵️ Diagnostic Truth-Mode - Only visible if IAP fetch fails! */}
+                    {(!subscriptionPlans || subscriptionPlans.length === 0) && (
+                        <View style={{ marginTop: 20, padding: 10, backgroundColor: colors.border + '20', borderRadius: 8 }}>
+                            <Text style={{ fontSize: 10, color: colors.textSecondary, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                                [DEBUG] ID: com.kttylabs.app | API Connection Failed - Using Failover Pricing
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
             </ScrollView>
