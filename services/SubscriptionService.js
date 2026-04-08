@@ -295,7 +295,11 @@ class SubscriptionService {
                     product_id: purchase.productId,
                 };
 
-            const response = await fetch(`${API_BASE_URL}/v1/subscriptions/verify`, {
+            const endpoint = Platform.OS === 'ios'
+                ? '/v1/auth/apple-iap/verify'
+                : '/v1/auth/google-play/verify';
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
