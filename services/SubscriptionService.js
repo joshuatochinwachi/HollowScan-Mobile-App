@@ -7,6 +7,7 @@ import {
     purchaseUpdatedListener,
     purchaseErrorListener,
     getAvailablePurchases,
+    getPendingTransactionsIOS,
     endConnection,
     getReceiptIOS
 } from 'react-native-iap';
@@ -197,11 +198,31 @@ class SubscriptionService {
 
         console.log(`[IAP][iOS] SKU confirmed. Launching Apple payment sheet for: ${sku}`);
 
+        // Extremely important: check for clogged pending transactions natively before adding a new one
+        try {
+            console.log('[IAP][iOS] Checking for pending transactions...');
+            const pending = await getPendingTransactionsIOS();
+            if (pending && pending.length > 0) {
+                console.log(`[IAP][iOS] Found ${pending.length} stuck transactions. Clearing queue...`);
+                for (const pt of pending) {
+                    try {
+                        await finishTransaction({ purchase: pt, isConsumable: false });
+                        console.log(`[IAP][iOS] Cleared stuck transaction: ${pt.transactionId}`);
+                    } catch (e) {
+                         console.warn('[IAP][iOS] Failed to clear stuck transaction:', e);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[IAP][iOS] Error checking pending transactions:', e);
+        }
+
         // Disable auto-finish so we can manually finish after backend verification.
-        // Without this, iOS finishes the transaction AND our listener finishes it again = crash.
         await requestPurchase({
+            skus: [sku], // Fallback for older JS bindings that might still check this
+            sku: sku, // Extra fallback
             request: {
-                ios: {
+                apple: { // Using recommended key instead of deprecated 'ios'
                     sku,
                     andDangerouslyFinishTransactionAutomatically: false,
                 }
@@ -219,6 +240,14 @@ class SubscriptionService {
             if (purchases && purchases.length > 0) {
                 for (const purchase of purchases) {
                     await this.verifyPurchaseOnBackend(purchase);
+                    // Apple requires us to ALWAYS finish the transaction when restoring
+                    // Otherwise it stays clogged in the StoreKit queue permanently!
+                    if (Platform.OS === 'ios') {
+                        try {
+                             console.log(`[IAP][iOS] Finishing restored transaction: ${purchase.transactionId}`);
+                             await finishTransaction({ purchase, isConsumable: false });
+                        } catch (e) { console.warn('Could not finish restored iOS transaction', e); }
+                    }
                 }
                 return true;
             }
@@ -251,6 +280,12 @@ class SubscriptionService {
                         }
                     } else {
                         console.warn('[IAP] Backend verification failed:', result.message);
+                        // If it's an iOS transaction and the backend specifically says 405 or 'No user',
+                        // we must finish it anyway so we don't permanently brick their SKPaymentQueue.
+                        if (Platform.OS === 'ios') {
+                             console.log('[IAP][iOS] Forcing finish transaction to unclog Apple Queue...');
+                             await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
+                        }
                     }
                 } catch (err) {
                     console.error('[IAP] Transaction finish error:', err);

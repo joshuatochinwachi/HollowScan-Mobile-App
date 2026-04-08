@@ -701,7 +701,10 @@ export const UserProvider = ({ children }) => {
             await SubscriptionService.requestSubscription(sku, isTrial);
             return { success: true }; 
         } catch (error) {
-            return { success: false, message: error.message };
+            console.error('[IAP] Purchase error in Context:', error);
+            // react-native-iap on iOS sometimes throws an object natively { code: 'E_USER_CANCELLED', message: ... }
+            const msg = error?.message || error?.code || (typeof error === 'string' ? error : 'Purchase failed or was cancelled.');
+            return { success: false, message: msg };
         }
     };
 
