@@ -10,6 +10,11 @@ Built with **React Native**, **FastAPI**, and **Supabase**, HollowScan provides 
 
 HollowScan is an industrial-grade arbitrage pipeline designed for high-concurrency ingestion and low-latency discovery. It handles thousands of marketplace updates daily with automated enrichment and self-healing resilience.
 
+> [!TIP]
+> **Elite Technical References**: 
+> - For the theoretical logic and state machines (Singleflight, iOS Plunger, PDS), see the [SYSTEM_DESIGN_SPECIFICATION.md](./SYSTEM_DESIGN_SPECIFICATION.md).
+> - For the structural blueprint and infrastructure topology (CORS, DevOps, Supabase Edge), see the [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md).
+
 ### 🔗 Repository Ecosystem
 [HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape)
 
@@ -83,6 +88,8 @@ graph TD
 HollowScan is a massive ecosystem. Use these authoritative guides for deep technical dives into specific sectors:
 
 ### 🏛️ System Design & Architecture
+- **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
+- **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
