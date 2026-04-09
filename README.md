@@ -18,22 +18,23 @@ HollowScan is an industrial-grade arbitrage pipeline designed for high-concurren
 ### 🔗 Repository Ecosystem
 [HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape)
 
-### ⚙️ Backend (Infrastructure)
-- **Engine**: FastAPI (Async Performance Optimized)
-- **Database**: Supabase (PostgreSQL with Row Level Security)
+### ⚙️ Backend & Ingestion (Infrastructure)
+- **Engine**: FastAPI (Async Performance Optimized).
+- **Ingestion**: **Discord Stealth Archiver** (Playwright + Flask) deployed on **Contabo VPS**.
+- **Database**: Supabase (PostgreSQL with Row Level Security).
 - **Verification**: `google-api-python-client` & `httpx` for Apple S2S.
-- **Real-time**: Telegram Bot API + Discord Scraper Integration.
 - **DevOps**: EAS Build pipelines + Environment Isolation.
 
 ```mermaid
 graph TD
-    %% INGESTION LAYER
-    subgraph "1. Ingestion Layer (Real-time Sourcing)"
-        DS[Discord Marketplace Scrapers]
-        WH[Webhook Inbound Gate]
-        PA[Python Archiver Service]
-        DS -->|Fuzzy JSONB Data| WH
-        WH --> PA
+    %% INGESTION LAYER (Contabo VPS)
+    subgraph "1. Stealth Ingestion (Real-time Sourcing)"
+        DS[Discord Stealth Archiver]
+        DASH[Archiver Dashboard: Live Stealth View]
+        ANTIBOT[Heuristic Anti-Detection Engine]
+        DS -->|Fuzzy JSONB Data| DB[(Supabase PostgreSQL)]
+        DS --> DASH
+        DS --> ANTIBOT
     end
 
     %% PROCESSING & INTELLIGENCE
@@ -41,7 +42,6 @@ graph TD
         FastAPI[Primary REST Backend]
         XTR[Extraction Engine: ROI, Brand Detection]
         IMG[Image Hijacking: Resolution Enhancement]
-        PA -->|Raw Persistence| DB[(Supabase PostgreSQL)]
         DB <--> FastAPI
         FastAPI --> XTR
         XTR --> IMG
@@ -96,6 +96,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[Backend Schema Integration](./BACKEND_SCHEMA_INTEGRATION.md)**: Mapping mobile attributes to Supabase JSONB fields.
 
 ### 🚀 Production & Deployment
+- **[Zero-Limit Build Engine](./SYSTEM_DESIGN_SPECIFICATION.md#8-industrial-devops-the-zero-limit-build-engine)**: Custom GitHub Actions pipeline bypassing EAS cloud limits via local signing.
 - **[iOS Production Build Guide](./IOS_BUILD_GUIDE_PRODUCTION.md)**: Essential steps for Apple App Store submission.
 - **[Google Play Billing Integration](./google-play-billing-integration-guide.md)**: Audit of the Android Nitro v14 implementation.
 - **[Deployment Workflow](./DEPLOYMENT_GUIDE.md)**: Production release and EAS submission checklist.
@@ -113,7 +114,9 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[Telegram Integration Guide](./TELEGRAM_INTEGRATION_GUIDE.md)**: Full protocol for linking mobile IDs to chat sessions.
 - **[Premium Sync Logic](./TELEGRAM_PREMIUM_SYNC.md)**: Deep dive into the mobile-to-bot sync mechanism.
 
-### 🎨 Feature Highlights
+### 🎨 Feature Sectors & Specialized Highlights
+- **[Discord Stealth Ingestion](./SYSTEM_DESIGN_SPECIFICATION.md#7-the-ingestion-engine-discord-stealth-archiver)**: Deep dive into the Playwright-powered stealth engine.
+- **[HollowScan Bot Ecosystem](./SYSTEM_DESIGN_SPECIFICATION.md#7-tier-4-the-arbitrage-bot-ecosystem)**: High-resolution image hijacking and link analytics.
 - **[Home Screen Layout](./home_screen_layout_diagram.md)**: Professional UI integration of the ticker and feed.
 - **[Profile Screen Features](./PROFILE_SCREEN_FEATURES.md)**: Account management and localized settings.
 - **[App Status Overview](./APP_STATUS.md)**: Real-time feature checklist and build stability report.
@@ -130,7 +133,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 ### Security Standards
 - **Authenticated Proxy Architecture**: All backend requests are proxied via Supabase-style verified headers, preventing direct database exposure and ensuring zero-trust communication.
 - **Secure Persistence**: Sensitive session data is handled with lifecycle-aware state management, with local tokens stored securely via `AsyncStorage` and encrypted where required.
-- **Environment Isolation**: Production secrets (API keys, project IDs) are strictly managed via `eas.json` for mobile and server-side `.env` files for backend services.
+- **Environment Isolation**: Production secrets (API keys, project IDs) and build certificates are strictly managed via **GitHub Secrets** (Base64-encoded), ensuring zero-trust binary signing in ephemeral environments.
 
 ---
 
@@ -248,6 +251,7 @@ hollowscan_backend/
 ├── app.py                           # Application Gateway & Route Controller
 ├── apple_iap_utils.py               # Apple S2S Receipt Verification logic
 ├── google_play_utils.py             # Google Play Billing v14 handler
+├── scraper.py                       # THE ARCHIVER: Playwright Stealth Engine
 ├── supabase_utils.py                # Database & Storage Abstraction
 ├── cache_utils.py                   # Singleflight & Redis management
 └── admin_dashboard/                 # React-based hollowControl GUI
@@ -444,20 +448,25 @@ stateDiagram-v2
 
 ---
 
-## 🤖 HollowScan Bot: High-Fidelity Image Engine
+## 🤖 HollowScan Telegram Bot: The High-Fidelity Alert Sector
 
-The Telegram Bot serves as a high-fidelity ingestion layer, ensuring users see crystalline product images even when source embeds are low quality.
+The Telegram Bot isn't just a utility—it's a secondary, high-performance Discovery Hub designed for users who prioritize real-time speed and ultra-clear visuals over a native UI.
 
-### 1. The Resolution Enhancement Pipeline
-The bot implements "URL Hijacking" logic to force retailers to deliver their maximum resolution assets.
-- **Slash Removal**: Strips Amazon's `.SL160.` and eBay's `.s-l300.` tags, forcing 1200px+ resolution.
-- **JSON-LD Scraping**: If images are restricted, the scraper crawls external metadata for the original `og:image` path.
+### 1. High-Res Image Hijacking Engine
+The bot ensures users see crystalline product images even when source embeds are low quality.
+- **Resolution Forcing**: Strips Amazon's `._SL160_` and eBay's `s-l300` tags from raw ingestion strings, forcing source servers to deliver maximum resolution assets (1200px+).
+- **Metadata Scraping**: If images are restricted, the bot uses `BeautifulSoup4` to crawl original `og:image` and JSON-LD paths directly from the retailer.
 
-### 2. Intelligent Link Analytics
-Beyond images, the bot parses thousands of lines of raw deal data to categorize links with automated icons:
-- `💰 Sold Listings`: Instant research on market value.
-- `📈 Keepa Charts`: Integrated price history monitoring.
-- `🛒 Direct Checkout`: High-priority action links.
+### 2. Intelligent Link Analytics & ROI
+The bot implement a semantic enrichment layer that parses deals on-the-fly:
+- **💰 Sold Listings**: Instant research on historical market value.
+- **📈 Keepa Charts**: Integrated price history monitoring.
+- **🛒 Store Checkout**: Direct, high-priority action links.
+- **ROI Ticker**: Displays unified margin calculations across USD/GBP/CAD regions.
+
+### 3. Stripe & Global Sync (Choice of discovery)
+- **Direct Checkout**: The bot features a standalone Stripe SDK integration for premium checkouts.
+- **Cross-Platform Sync**: Users can buy on **Mobile (iOS/Android)** and link their chat ID in seconds, or buy on **Telegram** and link to their mobile account. Premium is global.
 
 ---
 

@@ -15,7 +15,7 @@ The system is distributed across three primary infrastructure domains: **The Edg
 ```mermaid
 graph TD
     %% CLIENT LAYER
-    subgraph "1. Client Infrastructure (The Edge)"
+    subgraph "1. Client Infrastructure (Discovery Hub)"
         MA[React Native: iOS/Android]
         TG[Telegram Bot: python-telegram-bot]
         ADM[Admin Dashboard: React + Vite]
@@ -32,24 +32,42 @@ graph TD
     end
 
     %% COMPUTE LAYER
-    subgraph "3. Primary Compute Cluster (FastAPI)"
-        S1[Ingestion Node: Archiver Service]
+    subgraph "3. Ingestion Cluster (Contabo VPS)"
+        S1[Discord Stealth Archiver: Playwright + Flask]
+        S1_ANTIBOT[Heuristic Anti-Detection Engine]
+        S1_DASH[Dashboard: Live Stealth View]
+        S1 --> S1_ANTIBOT
+        S1 --> S1_DASH
+    end
+
+    subgraph "4. Primary API Cluster (FastAPI)"
         S2[API Node: Discovery Endpoints]
-        S3[Worker Node: Background Tasks]
-        LB --> S2
-        S1 --> DB[(Supabase Postgres)]
-        S2 <--> DB
+        S3[Worker Node: Notification Dispatch]
+        S2 <--> DB[(Supabase Postgres)]
         S3 --> EPS[Expo Push Dispatch]
     end
 
     %% PERSISTENCE & SERVICES
-    subgraph "4. Managed Persistence Layer (Supabase)"
+    subgraph "5. Managed Persistence Layer (Supabase)"
         DB
         RLS[Row Level Security Layer]
         EDGE[Supabase Edge Functions]
         BUCKET[Supabase Storage: Bot JSONs]
         DB <--> RLS
-        API --> EDGE
+        S1 --> DB
+    end
+
+    %% EXTERNAL PROVIDERS
+    subgraph "6. External Platform Ecosystem"
+        STR[Stripe Payment SDK]
+        AS[Apple App Store]
+        GP[Google Play Store]
+        EXPO[Expo Push Engine]
+        
+        TG <--> STR
+        MA <--> AS
+        MA <--> GP
+        S3 --> EXPO
     end
 ```
 
@@ -83,18 +101,19 @@ graph LR
         DEV[VS Code] -->|Git Push| GH[GitHub Repository]
     end
 
-    %% MOBILE DEPLOYMENT
-    subgraph "Mobile Pipeline (Expo/EAS)"
-        GH -->|Trigger| EAS[EAS Build Service]
-        EAS -->|iOS Build| AS[Apple App Store]
-        EAS -->|Android Build| GP[Google Play Store]
-        EAS -->|OTA Update| EX[Expo Update Service]
+    %% MOBILE CI/CD PIPELINE (GitHub Actions)
+    subgraph "Custom Build Cluster (Zero-Limit Engine)"
+        GH -->|workflow_dispatch| GHA[GitHub Actions]
+        GHA -->|Base64 Decode| SEC[Ephemeral p12/Keystore]
+        GHA -->|npx eas build --local| BIN[Binary Archive: IPA/AAB]
+        SEC --> BIN
     end
 
-    %% SERVER DEPLOYMENT
-    subgraph "Server Pipeline"
-        GH -->|Trigger| CD[Production Deploy]
-        CD -->|Environment Injection| PRD[Production Server: FastAPI]
+    %% DISTRIBUTION
+    subgraph "Delivery & Persistence"
+        BIN -->|Artifact Upload| GH_ASSETS[GitHub Artifacts]
+        BIN -->|Manual Upload| AS[Apple App Store]
+        BIN -->|Manual Upload| GP[Google Play Store]
         GH -->|Sync| SPB[Supabase CLI: Schema Migrate]
     end
 ```
@@ -109,6 +128,7 @@ graph LR
 - **SSL/TLS**: All traffic is encrypted in transit using industry-standard TLS 1.3.
 - **Admin Key Proxying**: The Admin Dashboard (`hollowControl`) communicates via a dedicated `X-Admin-Key` header, which is proxied and validated before any administrative action (overrides, bans) is executed.
 - **CORS Protection**: The API Gateway enforces strict Cross-Origin Resource Sharing policies to prevent unauthorized web-based access.
+- **Credential Isolation (CI/CD)**: iOS Certificates (`.p12`) and Android Keystores are stored as **Base64-encoded GitHub Secrets**. They are ephemerally decoded at runtime within the isolated runner environment and purged immediately after the binary signing process (`npx eas build --local`), ensuring zero exposure of production keys in the codebase.
 
 ---
 
@@ -117,9 +137,11 @@ graph LR
 | Interaction | Protocol | Payload | Responsibility |
 | :--- | :--- | :--- | :--- |
 | **Mobile → API** | HTTPS / REST | JSON | Discovery feed, Auth, Profile management. |
-| **Scraper → DB** | HTTP / SQL | JSONB | Ingestion, Deduplication, Archiving. |
+| **Bot → DB** | SQL / Storage | JSON | Real-time discovery, State persistence. |
+| **Bot → Stripe** | HTTPS / API | JSON | Direct Bot-side premium checkout. |
+| **Scraper → DB** | HTTP / SQL | JSONB | Real-time Discord ingestion, Deduplication. |
+| **Scraper → Admin** | SocketIO | Image/Logs | Live Stealth View for human monitoring. |
 | **API → Expo** | HTTP / POST | JSON | Real-time push notification dispatch. |
-| **Stripe → Bot** | Webhook | JSON | Subscription renewal handling for Telegram. |
-| **Bot → DB** | SQL / Storage | JSON | State persistence for chat sessions. |
+| **Stripe → Bot** | Webhook | JSON | Subscription renewal handling. |
 
 ---
