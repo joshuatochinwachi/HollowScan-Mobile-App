@@ -224,6 +224,7 @@ class SubscriptionService {
             request: {
                 apple: { // Using recommended key instead of deprecated 'ios'
                     sku,
+                    appAccountToken: this.currentUserId, // Link to internal user ID (UUID)
                     andDangerouslyFinishTransactionAutomatically: false,
                 }
             },
