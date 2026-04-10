@@ -87,10 +87,27 @@ The architecture follows a "Responsibility Segregation" model:
 Security is enforced at the database layer. All client-side interactions via the API utilize **RLS Policies** to ensure:
 - Users can only read their own profile and private `saved_deals`.
 - Premium content (`alerts`) is filtered based on the `subscription_status` claim.
+- **IAP Resilience Layer**: A dedicated mapping logic that bridges Apple's Server-to-Server (S2S) V2 notifications with the internal User ID using `appAccountToken`.
 
 ---
 
-## 4. DevOps & Deployment Pipeline
+## 4. Resilient Subscription Sync (iOS/Android)
+
+The subscription engine is designed with a **Defense-in-Depth** strategy to handle the inherent race conditions between the Mobile Client and the App Store Webhooks.
+
+### 4.1 Token Mapping & De-conflicting
+The architecture uses a two-stage identification process for iOS transactions:
+- **Primary**: Internal `user_id` is passed as an `appAccountToken` (StoreKit 2) during the purchase handshake.
+- **Secondary (Fallback)**: If the app verification call arrives before the webhook, the backend uses the `original_transaction_id` to link the transaction to the user permanently.
+
+### 4.2 Webhook Handling
+The FastAPI backend acts as a high-availability listener for Apple/Google webhooks:
+- **Async Processing**: Subscriptions are updated in background tasks to prevent webhook timeouts.
+- **Cross-Platform Reconciliation**: Ensures that if a user upgrades on iOS, their Telegram bot access is automatically granted via a shared `is_premium` flag in the Supabase schema.
+
+---
+
+## 5. DevOps & Deployment Pipeline
 
 HollowScan utilizes a modern CI/CD pipeline ensuring safe, reproducible releases for both the server and mobile clients.
 

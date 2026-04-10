@@ -129,6 +129,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **Service-Oriented Logic**: Business logic is decoupled from UI components into dedicated `services/` (e.g., `SubscriptionService`, `LiveProductService`), ensuring high testability and separation of concerns.
 - **Centralized State Management**: Optimized use of the **React Context API** to manage high-frequency authentication and user profiles globally without the overhead of external state libraries.
 - **Custom Hook Pattern**: Extensive use of specialized hooks to encapsulate complex device interactions (Haptics, StoreKit, Android Billing), keeping components declarative and clean.
+- **Resilient IAP Sync**: Implemented a defense-in-depth mapping strategy for iOS subscriptions, utilizing StoreKit 2 `appAccountToken` and backend-side fallback lookups to eliminate race conditions between client-side verification and server-to-server (S2S) webhooks.
 
 ### Security Standards
 - **Authenticated Proxy Architecture**: All backend requests are proxied via Supabase-style verified headers, preventing direct database exposure and ensuring zero-trust communication.
@@ -325,6 +326,13 @@ graph LR
     GP -->|SUBSCRIPTION_RENEWED / CANCELED| WH
     WH --> VLD
     VLD -->|Immediate Status Sync| SPB
+
+    %% FALLBACK LOGIC
+    subgraph "Safe-Sync Resilience"
+        WH --> lookup{User Found?}
+        lookup -- No --> fallback[Lookup by appAccountToken]
+        fallback --> update[Link & Upgrade]
+    end
 ```
 
 ### 4. Startup Recovery Flow

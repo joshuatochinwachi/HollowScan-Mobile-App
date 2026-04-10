@@ -102,7 +102,18 @@ flowchart TD
     AH --> AI[User state updated: isPremium = true]
     AI --> AJ([Alert: You're Premium! 🚀\nShown ONLY now])
     AJ --> AK([All blurs removed\nUnlimited feed active])
+
+    %% RESILIENCE SUBSYSTEM
+    subgraph "Race-Condition Resilience"
+        webhook(Apple Webhook V2) --> lookup{Lookup User}
+        lookup -- By appAccountToken --> success[Upgrade User]
+        lookup -- By transactionId --> success
+        success --> link[Link IDs for future sync]
+    end
 ```
+
+### Race Condition Resilience
+The system implements a **Safe-Sync** mechanism. On iOS, the app passes the `currentUserId` to Apple as an `appAccountToken`. When Apple's Server-to-Server (S2S) notification hits the backend, the backend can identify the user **even if the app has not finished the verification call yet**.
 
 ---
 
@@ -272,6 +283,8 @@ flowchart LR
 | **EULA Link** | Yes — Apple requires it for auto-renewable subs | No — Android does not require this |
 | **Restore Purchases** | Via `getAvailablePurchases()` (re-verification) | Via `getAvailablePurchases()` (re-verification) |
 | **Pending Transactions on Launch** | Cleaned up — `finishTransaction` called for any stuck purchases | Handled by Google Play automatically |
+| **S2S Mapping Link** | `appAccountToken` (StoreKit 2) | `obfuscatedAccountId` (Google Play) |
+| **Webhook Fallback** | `transactionId` + `token` mapping | `purchaseToken` mapping |
 
 ---
 
