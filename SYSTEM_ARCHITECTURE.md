@@ -153,7 +153,7 @@ graph LR
 
 | Interaction | Protocol | Payload | Responsibility |
 | :--- | :--- | :--- | :--- |
-| **Mobile → API** | HTTPS / REST | JSON | Discovery feed, Auth, Profile management. |
+| **Mobile → API** | HTTPS / REST | JSON | Discovery feed, Auth, Alert Preferences. |
 | **Bot → DB** | SQL / Storage | JSON | Real-time discovery, State persistence. |
 | **Bot → Stripe** | HTTPS / API | JSON | Direct Bot-side premium checkout. |
 | **Scraper → DB** | HTTP / SQL | JSONB | Real-time Discord ingestion, Deduplication. |

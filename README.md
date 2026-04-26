@@ -228,7 +228,7 @@ hollowscan_app/
 │   ├── PremiumPaywallScreen.js      # Revenue Hub & Trial Triggers
 │   ├── ProfileScreen.js             # Account Management & Region Settings
 │   ├── SavedScreen.js               # Cloud-synced Bookmarks
-│   ├── AlertsScreen.js              # Historical Push Notification Log
+│   ├── AlertsScreen.js              # Alert Preferences: Store & Region filters
 │   ├── SettingsScreen.js            # Global Preferences & Theme Toggles
 │   ├── LoginScreen.js / SignupScreen.js # Auth Lifecycle
 │   ├── ForgotPasswordScreen.js      # Password Recovery Loop
@@ -247,8 +247,10 @@ hollowscan_app/
 ```
 
 ### 🛰️ Backend Ecosystem (FastAPI)
+The backend is a high-performance FastAPI service that manages the core business logic, IAP verification, and ingestion pipelines.
+
 ```text
-hollowscan_backend/
+hollowscan_backend/ (External Repo)
 ├── app.py                           # Application Gateway & Route Controller
 ├── apple_iap_utils.py               # Apple S2S Receipt Verification logic
 ├── google_play_utils.py             # Google Play Billing v14 handler
@@ -257,6 +259,9 @@ hollowscan_backend/
 ├── cache_utils.py                   # Singleflight & Redis management
 └── admin_dashboard/                 # React-based hollowControl GUI
 ```
+
+> [!NOTE]
+> For development convenience, core utility files like `scraper.py`, `telegram_bot.py`, and `google_play_utils.py` may be mirrored in the mobile repository root to facilitate cross-platform synchronization and logic auditing.
 
 ---
 
@@ -268,7 +273,7 @@ hollowscan_backend/
 | **Saved Deals** | Cloud Bookmarks | Atomically synced bookmarks in Supabase `saved_deals`. |
 | **Paywall Hub** | Revenue Gating | Resilient IAP with "Plunger" logic and trial detection. |
 | **Auth lifecycle** | User Onboarding | JWT-based auth with secure reset capability via Postmark. |
-| **Alerts History** | Notification Log | Persistent history of region-filtered push alerts. |
+| **Alert Preferences** | Notification Filters | Persistent region & store-filtered alert settings. |
 | **Telegram Sync** | Cross-Platform Pairing | OAuth-style chat ID mapping for premium synchronization. |
 
 ---
@@ -427,32 +432,37 @@ The interface is designed for **speed and clarity**, essential for fast-moving a
 
 ---
 
-## ⏳ Gating & Daily Limit Mechanism
+## ⏳ Premium Gating & Conversion Logic
 
-To maximize conversion from free to premium, HollowScan implements a sophisticated gating mechanism controlled via the **React Context API**.
+To maximize conversion from free to premium, HollowScan implements a high-intent gating mechanism. Unlike traditional "metered" paywalls, HollowScan utilizes a **Hard Gate** strategy that leverages scarcity and curiosity to drive users toward the 3-Day Free Trial.
 
 ### 1. The Conversion State Machine
-Users have a frictionless initial discovery experience that transitions into a high-value conversion path.
+The user journey is designed to showcase the platform's value (the discovery feed) while protecting the transactional data (the details) behind a premium layer.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> ActiveFeed: Initial Launch
-    ActiveFeed --> ProductDetail: View Product
-    ProductDetail --> ActiveFeed: Back
+    [*] --> DiscoveryFeed: Initial Launch
     
-    state "Daily Limit Logic" as Limit {
-        ProductDetail --> CheckCount: count++
-        CheckCount --> LimitReached: count > threshold
-        CheckCount --> ProductDetail: count <= threshold
+    state DiscoveryFeed {
+        [*] --> BlurredDeals: Free User
+        [*] --> UnlockedDeals: Premium User
     }
-
-    LimitReached --> DailyLimitModal: Trigger Overlay
-    DailyLimitModal --> FreeTrial: Taps "Start Trial"
-    DailyLimitModal --> Countdown: Wait for Reset
     
-    FreeTrial --> IAP_Flow: Trigger Paywall
-    PremiumUser --> [*]: Unlimited Access Unlocked
+    BlurredDeals --> PremiumPaywall: Tap any Deal
+    PremiumPaywall --> TrialStarted: Start 3-Day Free Trial
+    PremiumPaywall --> SubscriptionStarted: Monthly/Yearly Purchase
+    
+    TrialStarted --> UnlockedDeals: Access Granted
+    SubscriptionStarted --> UnlockedDeals: Access Granted
+    
+    UnlockedDeals --> ProductDetail: View Analytics & ROI
+    ProductDetail --> UnlockedDeals: Back
 ```
+
+### 2. Strategic Friction
+- **Blurred Discovery**: Free users can see that deals are dropping in real-time, but specific identifiers (Exact Title, ROI, Store Name) are obscured or locked.
+- **Immediate Redirect**: Tapping a "locked" deal card doesn't show a limited view; it instantly triggers the `PremiumPaywallScreen` using an atomic navigation replace, ensuring the user is focused on the conversion offer.
+- **Trial-First Approach**: The paywall dynamically prioritizes the **3-Day Free Trial** for eligible new accounts, significantly increasing the "Free-to-Premium" conversion velocity.
 
 ---
 

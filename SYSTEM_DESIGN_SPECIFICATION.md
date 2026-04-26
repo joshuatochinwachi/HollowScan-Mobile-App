@@ -42,7 +42,7 @@ graph TD
     subgraph "Layer 4: Multi-Channel Delivery"
         BGR --> |Priority Dispatch| EPS[Expo Push Service]
         EPS --> |Real-time Alert| MA[Mobile Application]
-        API <--> |Auth/Profile| TG[Telegram Arbitrage Bot]
+        API <--> |Auth/Alert Prefs| TG[Telegram Arbitrage Bot]
         API <--> |Control| ADM[hollowControl Admin]
     end
 ```
@@ -128,7 +128,7 @@ Every deal dispatched to the bot is parsed through a semantic enrichment layer:
 
 ### 7.3 Global Identity & Premium Sync
 HollowScan maintains a **Decoupled Identity Model**, allowing users to choose their preferred discovery interface:
-- **ID Pairing**: Users can link their Mobile UUID to their Telegram Chat ID via a pairing code provided in the app.
+- **One-Tap Linking**: Users link their Mobile UUID to their Telegram Chat ID via a specialized **Deep Link payload** (`https://t.me/Hollowscan_bot?start=link_ID`) that triggers an atomic association in the backend.
 - **Subscription Portability**: The `SubscriptionManager` class synchronizes state between the local Python environment and the Supabase cloud, ensuring that premium status from iOS/Android IAP reflects in Telegram in real-time.
 - **Stripe SDK Integration**: The bot handles standalone premium checkouts via the Stripe Python SDK, issuing internal redemption codes for immediate status upgrades.
 
