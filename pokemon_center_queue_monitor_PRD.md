@@ -98,49 +98,50 @@ Based on community observation:
 
 ## 4. System Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    RAILWAY DEPLOYMENT                        │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │           Pokemon Center Monitor Service             │   │
-│  │                                                     │   │
-│  │  ┌──────────────┐    ┌───────────────────────────┐ │   │
-│  │  │  Scheduler   │───▶│   Playwright Browser      │ │   │
-│  │  │  (APScheduler│    │   (Chromium, Headless)    │ │   │
-│  │  │   25-35s     │    │                           │ │   │
-│  │  │   interval)  │    │   Loads pokemoncenter.com │ │   │
-│  │  └──────────────┘    │   Executes Queue-it JS    │ │   │
-│  │                      │   Reads rendered DOM      │ │   │
-│  │                      └───────────┬───────────────┘ │   │
-│  │                                  │                  │   │
-│  │                      ┌───────────▼───────────────┐ │   │
-│  │                      │    Detection Engine        │ │   │
-│  │                      │  (Multi-signal analysis)   │ │   │
-│  │                      └───────────┬───────────────┘ │   │
-│  │                                  │                  │   │
-│  │            ┌─────────────────────▼──────────────┐  │   │
-│  │            │         State Machine               │  │   │
-│  │            │   NORMAL ◀──────────▶ QUEUE_ACTIVE  │  │   │
-│  │            └─────────────────────┬──────────────┘  │   │
-│  │                                  │                  │   │
-│  └──────────────────────────────────┼──────────────────┘   │
-│                                     │                       │
-└─────────────────────────────────────┼───────────────────────┘
-                                      │
-              ┌───────────────────────┼───────────────────────┐
-              │                       │                       │
-              ▼                       ▼                       ▼
-    ┌─────────────────┐   ┌─────────────────┐   ┌──────────────────┐
-    │    Supabase     │   │   FastAPI App   │   │   Firebase FCM   │
-    │                 │   │   (Your main    │   │                  │
-    │  pc_monitor_    │   │    backend)     │   │  Topic:          │
-    │  state table    │   │                 │   │  pc_queue_alerts │
-    │                 │   │  GET /monitor/  │   │                  │
-    │  Records every  │   │  pokemon-center │   │  Push to ALL     │
-    │  state change   │   │  /status        │   │  subscribed      │
-    └─────────────────┘   └─────────────────┘   │  users instantly │
-                                                 └──────────────────┘
+```mermaid
+graph TD
+    %% MONITOR SERVICE (RAILWAY)
+    subgraph "1. Monitor Microservice (Railway.app)"
+        SCHED[Scheduler: APScheduler<br/>Interval: 25-35s]
+        PW[Playwright Browser<br/>Headless Chromium]
+        DET[Detection Engine<br/>Multi-Signal Analysis]
+        SM[State Machine<br/>NORMAL ↔ QUEUE_ACTIVE]
+        
+        SCHED --> PW
+        PW -->|Rendered DOM| DET
+        DET -->|Confidence Score| SM
+    end
+
+    %% PERSISTENCE LAYER
+    subgraph "2. Persistence Layer (Supabase)"
+        DB[(Supabase Postgres)]
+        RLS[RLS Security Layer]
+        DB --- RLS
+    end
+
+    %% EXTERNAL TARGET
+    PC_SITE[PokemonCenter.com]
+    PW -.->|Scrape| PC_SITE
+
+    %% STATE TRIGGERS
+    SM -->|Update State| DB
+    SM -->|Trigger Alert| FCM[Firebase Cloud Messaging]
+
+    %% MOBILE DELIVERY
+    subgraph "3. Delivery & Client Layer"
+        FCM -->|Push Notification| APP[HollowScan Mobile App]
+        BACK[HollowScan Backend<br/>FastAPI]
+        APP <-->|GET /monitor/status| BACK
+        BACK <-->|Query State| DB
+    end
+
+    %% STYLING
+    classDef monitor fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef persistence fill:#dfd,stroke:#333,stroke-width:2px;
+    classDef delivery fill:#def,stroke:#333,stroke-width:2px;
+    class SCHED,PW,DET,SM monitor;
+    class DB,RLS persistence;
+    class FCM,APP,BACK delivery;
 ```
 
 ---
