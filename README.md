@@ -90,6 +90,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 ### 🏛️ System Design & Architecture
 - **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
 - **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
+- **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
@@ -135,6 +136,39 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **Authenticated Proxy Architecture**: All backend requests are proxied via Supabase-style verified headers, preventing direct database exposure and ensuring zero-trust communication.
 - **Secure Persistence**: Sensitive session data is handled with lifecycle-aware state management, with local tokens stored securely via `AsyncStorage` and encrypted where required.
 - **Environment Isolation**: Production secrets (API keys, project IDs) and build certificates are strictly managed via **GitHub Secrets** (Base64-encoded), ensuring zero-trust binary signing in ephemeral environments.
+
+---
+
+## ⚡ Concurrency & Architectural Primitives
+
+HollowScan utilizes a hybrid concurrency model to achieve industrial-grade reliability. The system is built on four core primitives that ensure zero-downtime and high throughput.
+
+### 1. The "Singleflight" Pattern (FastAPI)
+To prevent **Cache Stampedes** during high-velocity restock events, the backend uses an `asyncio.Event` based Singleflight merger. Multiple concurrent requests for the same SKU are coalesced into a single database fetch, fulfilling all pending requests with a single atomic result.
+
+### 2. PDS (Patience Database Startup) Logic
+Ensures high availability during cold boots or database maintenance. The backend implements a 90-second exponential backoff loop during the `lifespan` event, iteratively pinging Supabase until readiness is confirmed before accepting client traffic.
+
+### 3. Stealth Heuristics (Gaussian Randomization)
+The ingestion engine bypasses sophisticated anti-bot detection using **Gaussian distributed delays** (`random.gauss`) and high-fidelity Bezier mouse curves. This ensures that scraper timing never forms a detectable signature.
+
+### 4. The "iOS Plunger" & SK 2 Integration
+Resolves the classic "S2S Webhook vs. Receipt Verification" race condition. By using StoreKit 2 `appAccountToken` mapping and an async background task (the Plunger), the system reconciles purchase integrity even if notifications arrive out of order.
+
+```mermaid
+flowchart LR
+    ASYNC["Async Event Loop<br/>(Concurrent)"]
+    BRIDGE["to_thread /<br/>run_in_executor"]
+    SYNC["Blocking Code<br/>(I/O, SDKs)"]
+
+    ASYNC -->|"offload"| BRIDGE
+    BRIDGE -->|"thread pool"| SYNC
+    SYNC -->|"return"| BRIDGE
+    BRIDGE -->|"resume"| ASYNC
+```
+
+> [!IMPORTANT]
+> **Technical Deep Dive**: For a 100% accurate code-level audit of every lock, thread, and async loop in the system, see the **[Concurrency Breakdown](./hollowscan_concurrency_breakdown.md)**.
 
 ---
 
