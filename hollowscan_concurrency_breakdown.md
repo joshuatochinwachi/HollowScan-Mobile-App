@@ -59,8 +59,8 @@ flowchart TD
     START["Flask server starts<br/>main thread"]
     START --> ROUTE["POST /api/start<br/>sync route"]
     ROUTE --> THREAD["threading.Thread<br/>archiver wrapper"]
-    THREAD --> LOOP["asyncio.new_loop()<br/>New loop in thread"]
-    LOOP --> ARCHIVER["async_archiver_logic()<br/>Async Playwright"]
+    THREAD --> EVLOOP["asyncio.new_loop()<br/>New loop in thread"]
+    EVLOOP --> ARCHIVER["async_archiver_logic()<br/>Async Playwright"]
 
     subgraph FLASK["Main Thread — Flask"]
         F1["GET / (Dashboard)"]
@@ -158,15 +158,15 @@ Why a thread? Flask runs synchronously. You can't `await` inside a Flask route. 
 sequenceDiagram
     participant Flask as Flask Thread
     participant Thread as Worker Thread
-    participant Loop as Async Loop
+    participant EvLoop as Async Loop
     participant PW as Playwright
 
     Flask->>Thread: Launch Thread
-    Thread->>Loop: Create Loop
-    Loop->>PW: __aenter__()
-    Note over Loop,PW: Scraping Loop
-    PW-->>Loop: Data/Images
-    Loop-->>Flask: socketio.emit()
+    Thread->>EvLoop: Create Loop
+    EvLoop->>PW: __aenter__()
+    Note over EvLoop,PW: Scraping Loop
+    PW-->>EvLoop: Data/Images
+    EvLoop-->>Flask: socketio.emit()
 ```
 
 **Thread 2 — Supabase uploads (fire-and-forget)**
