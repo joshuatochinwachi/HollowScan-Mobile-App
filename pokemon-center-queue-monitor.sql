@@ -11,15 +11,15 @@ CREATE TABLE IF NOT EXISTS pc_monitor_state (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert the initial state
+-- Insert the initial state (only if table is empty)
 INSERT INTO pc_monitor_state (state, monitor_healthy)
-VALUES ('NORMAL', TRUE)
-ON CONFLICT DO NOTHING;
+SELECT 'NORMAL', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM pc_monitor_state);
 
 -- 2. Table for historical queue events (Log)
 CREATE TABLE IF NOT EXISTS pc_queue_events (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    event_type VARCHAR(30) NOT NULL, -- QUEUE_STARTED, QUEUE_ENDED
+    event_type VARCHAR(30) NOT NULL, -- QUEUE_STARTED, QUEUE_ENDED, MONITOR_ERROR
     state_before VARCHAR(20),
     state_after VARCHAR(20),
     detected_at TIMESTAMPTZ DEFAULT NOW(),
@@ -38,6 +38,19 @@ CREATE INDEX IF NOT EXISTS idx_pc_queue_events_detected_at ON pc_queue_events(de
 ALTER TABLE pc_monitor_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pc_queue_events ENABLE ROW LEVEL SECURITY;
 
--- Allow service role (Backend/Monitor) full access
-CREATE POLICY "Service role full access on state" ON pc_monitor_state FOR ALL USING (auth.role() = 'service_role');
-CREATE POLICY "Service role full access on events" ON pc_queue_events FOR ALL USING (auth.role() = 'service_role');
+-- 5. Safely re-create policies (Drops them first if they exist)
+DO $$
+BEGIN
+    -- Handle pc_monitor_state policy
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role full access on state' AND tablename = 'pc_monitor_state') THEN
+        DROP POLICY "Service role full access on state" ON pc_monitor_state;
+    END IF;
+    CREATE POLICY "Service role full access on state" ON pc_monitor_state FOR ALL USING (auth.role() = 'service_role');
+
+    -- Handle pc_queue_events policy
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role full access on events' AND tablename = 'pc_queue_events') THEN
+        DROP POLICY "Service role full access on events" ON pc_queue_events;
+    END IF;
+    CREATE POLICY "Service role full access on events" ON pc_queue_events FOR ALL USING (auth.role() = 'service_role');
+END
+$$;
