@@ -16,11 +16,12 @@ HollowScan is an industrial-grade arbitrage pipeline designed for high-concurren
 > - For the structural blueprint and infrastructure topology (CORS, DevOps, Supabase Edge), see the [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md).
 
 ### 🔗 Repository Ecosystem
-[HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape) || [HollowScan Raffle Github](https://github.com/joshuatochinwachi/HollowScan-Raffle)
+[HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape) || [HollowScan Raffle Github](https://github.com/joshuatochinwachi/HollowScan-Raffle) || [PC Queue Monitor Microservice Github](https://github.com/joshuatochinwachi/Pokemon-Center-Monitor-MicroService)
 
 ### ⚙️ Backend & Ingestion (Infrastructure)
 - **Engine**: FastAPI (Async Performance Optimized).
 - **Ingestion**: **Discord Stealth Archiver** (Playwright + Flask) deployed on **Contabo VPS**.
+- **Microservices**: **Pokémon Center Elite Monitor** (Playwright Stealth + Imperva Evasion) deployed on **Railway.app**.
 - **Database**: Supabase (PostgreSQL with Row Level Security).
 - **Verification**: `google-api-python-client` & `httpx` for Apple S2S.
 - **DevOps**: EAS Build pipelines + Environment Isolation.
@@ -91,6 +92,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
 - **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
 - **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services.
+- **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: Detailed technical overview of the stealth microservice, fail-safes, and Live Queue Dashboard.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.

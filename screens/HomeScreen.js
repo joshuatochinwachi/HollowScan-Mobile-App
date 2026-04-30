@@ -29,6 +29,7 @@ import LiveProductService from '../services/LiveProductService';
 import { setupNotificationHandler } from '../services/PushNotificationService';
 import { formatPriceDisplay } from '../utils/format';
 import AnnouncementBanner from '../components/AnnouncementBanner';
+import PCMonitorHub from '../components/PCMonitorHub';
 
 const { width } = Dimensions.get('window');
 
@@ -509,6 +510,8 @@ const HomeScreen = () => {
                                 <Text style={styles.discountBadgeText}>-{discountPercent}%</Text>
                             </LinearGradient>
                         )}
+                        {/* POKEMON CENTER MONITOR HUB */}
+                        <PCMonitorHub />
                         {/* HEART BUTTON */}
                         <TouchableOpacity
                             onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
@@ -725,6 +728,9 @@ const HomeScreen = () => {
                 isDarkMode={isDarkMode} 
                 colors={colors} 
             />
+
+            {/* ELITE PC MONITOR HUB */}
+            <PCMonitorHub />
 
             {/* EMAIL VERIFICATION BANNER REMOVED - REPLACED BY FULL SCREEN GATE */}
 
