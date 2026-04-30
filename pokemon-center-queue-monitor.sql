@@ -34,11 +34,22 @@ CREATE TABLE IF NOT EXISTS pc_queue_events (
 -- 3. Index for history lookups
 CREATE INDEX IF NOT EXISTS idx_pc_queue_events_detected_at ON pc_queue_events(detected_at DESC);
 
--- 4. Enable RLS (Security)
+-- 4. Table for subscriber tracking
+CREATE TABLE IF NOT EXISTS pc_monitor_subscribers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    fcm_token TEXT NOT NULL,
+    subscribed_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE,
+    UNIQUE(user_id, fcm_token)
+);
+
+-- 5. Enable RLS (Security)
 ALTER TABLE pc_monitor_state ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pc_queue_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pc_monitor_subscribers ENABLE ROW LEVEL SECURITY;
 
--- 5. Safely re-create policies (Drops them first if they exist)
+-- 6. Safely re-create policies (Drops them first if they exist)
 DO $$
 BEGIN
     -- Handle pc_monitor_state policy
@@ -52,5 +63,11 @@ BEGIN
         DROP POLICY "Service role full access on events" ON pc_queue_events;
     END IF;
     CREATE POLICY "Service role full access on events" ON pc_queue_events FOR ALL USING (auth.role() = 'service_role');
+
+    -- Handle pc_monitor_subscribers policy
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role full access on subscribers' AND tablename = 'pc_monitor_subscribers') THEN
+        DROP POLICY "Service role full access on subscribers" ON pc_monitor_subscribers;
+    END IF;
+    CREATE POLICY "Service role full access on subscribers" ON pc_monitor_subscribers FOR ALL USING (auth.role() = 'service_role');
 END
 $$;
