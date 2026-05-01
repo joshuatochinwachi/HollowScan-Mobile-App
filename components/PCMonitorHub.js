@@ -133,7 +133,7 @@ const PCMonitorHub = () => {
                             <View style={[styles.pulseCircle, { backgroundColor: '#8E8E93', opacity: 0.5 }]} />
                             <View>
                                 <Text style={[styles.title, { color: isDarkMode ? '#FFF' : '#000' }]}>Pokémon Center Monitor</Text>
-                                <Text style={styles.subtitle}>Unlock Elite Queue Intelligence</Text>
+                                <Text style={styles.subtitle}>Unlock to monitor and get notified when the queue goes live! 🔔</Text>
                             </View>
                         </View>
                         <View style={styles.lockBadge}>
