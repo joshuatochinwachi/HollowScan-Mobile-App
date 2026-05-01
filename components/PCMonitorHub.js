@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Linking,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { UserContext } from '../context/UserContext';
@@ -17,6 +18,7 @@ import Constants from '../Constants';
 const { width } = Dimensions.get('window');
 
 const PCMonitorHub = () => {
+    const navigation = useNavigation();
     const { user, isPremium, isDarkMode } = useContext(UserContext);
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -60,7 +62,7 @@ const PCMonitorHub = () => {
         fetchStatus();
         const interval = setInterval(fetchStatus, 30000); // Poll every 30s
         return () => clearInterval(interval);
-    }, [fetchStatus]);
+    }, [fetchStatus, isPremium]);
 
     const handleEnableAlerts = async () => {
         if (!user?.id || submitting) return;
@@ -84,6 +86,26 @@ const PCMonitorHub = () => {
             setSubmitting(false);
         }
     };
+    
+    const handleDisableAlerts = async () => {
+        if (!user?.id || submitting) return;
+        setSubmitting(true);
+        try {
+            const response = await fetch(`${Constants.API_BASE_URL}/v1/monitor/pokemon-center/unsubscribe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.id }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                await fetchStatus();
+            }
+        } catch (error) {
+            console.error('[MONITOR] Unsubscribe error:', error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     if (loading && !status) {
         return (
@@ -98,7 +120,7 @@ const PCMonitorHub = () => {
         return (
             <TouchableOpacity 
                 activeOpacity={0.9}
-                onPress={() => Linking.openURL('https://hollowscan.com/premium')}
+                onPress={() => navigation.navigate('PremiumPaywall')}
                 style={styles.container}
             >
                 <BlurView intensity={isDarkMode ? 40 : 60} style={styles.blur}>
@@ -168,7 +190,9 @@ const PCMonitorHub = () => {
                         <Animated.View style={[styles.pulseCircle, { backgroundColor: '#4ADE80', opacity: pulseAnim }]} />
                         <View>
                             <Text style={[styles.title, { color: isDarkMode ? '#FFF' : '#000' }]}>Pokémon Center Status</Text>
-                            <Text style={styles.subtitle}>Monitoring 24/7 • Site Normal</Text>
+                            <Text style={styles.subtitle}>
+                                {!isSubscribed ? "Tap 'Enable Alerts' to get notified instantly! 🔔" : "Monitoring 24/7 • Site Normal"}
+                            </Text>
                         </View>
                     </View>
                     
@@ -185,9 +209,15 @@ const PCMonitorHub = () => {
                             )}
                         </TouchableOpacity>
                     ) : (
-                        <View style={styles.activeBadge}>
-                            <Text style={styles.activeBadgeText}>Alerts On</Text>
-                        </View>
+                        <TouchableOpacity 
+                            onPress={handleDisableAlerts}
+                            disabled={submitting}
+                            style={styles.activeBadge}
+                        >
+                            <Text style={styles.activeBadgeText}>
+                                {submitting ? "..." : "Alerts On"}
+                            </Text>
+                        </TouchableOpacity>
                     )}
                 </View>
             </BlurView>

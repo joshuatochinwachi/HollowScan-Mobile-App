@@ -1,125 +1,144 @@
-# Pokémon Center Elite Queue Monitor Architecture
+# HollowScan: Pokémon Center Elite Monitor 🛡️🔥
+## End-to-End System Architecture & Specification
 
-This document provides a comprehensive technical overview of the Pokémon Center Queue Monitor feature integrated into the HollowScan ecosystem. 
+This document provides a comprehensive technical overview of the **HollowScan Pokémon Center Monitor**, a high-performance, stealth-focused microservice designed to bypass enterprise-grade WAFs (Imperva) and provide real-time intelligence to premium users.
 
-## 1. System Overview
+---
 
-The system is designed to bypass stringent anti-bot measures (like Imperva) by isolating the detection engine into a dedicated microservice. This microservice maintains a global state in Supabase, which is securely served to premium users via the FastAPI backend, culminating in a real-time, interactive dashboard in the React Native mobile app.
+## 1. High-Level Architecture
 
-### High-Level Architecture
+The system is composed of four primary layers working in perfect synchronization:
 
 ```mermaid
 graph TD
-    subgraph Railway [Railway.app - Stealth Microservice]
-        Monitor[pokemon_monitor.py<br/>Playwright Stealth Engine]
-        Dashboard[Flask/SocketIO<br/>Live Stealth View]
+    subgraph "External Web"
+        PC["Pokémon Center Website"]
+        EXPO["Expo Push API"]
     end
 
-    subgraph Supabase [Supabase Database]
-        State[(pc_monitor_state)]
-        Events[(pc_queue_events)]
-        Subs[(pc_monitor_subscribers)]
+    subgraph "PC Monitor Microservice (Ghost-Mode)"
+        MONITOR["Monitor Loop (Playwright)"]
+        DETECTION["6-Sensor Fusion Engine"]
+        PUSH["Premium Gating Push Engine"]
     end
 
-    subgraph Backend [Contabo VPS - FastAPI]
-        API[/v1/monitor/pokemon-center/status]
-        Subscribe[/v1/monitor/pokemon-center/subscribe]
+    subgraph "Database (Supabase)"
+        DB_STATE[("pc_monitor_state")]
+        DB_SUB[("pc_monitor_subscribers")]
+        DB_USER[("users (Tokens & Premium Status)")]
     end
 
-    subgraph Mobile [HollowScan Mobile App]
-        UI[PCMonitorHub.js]
-        Push[Expo Push Notifications]
+    subgraph "FastAPI Backend"
+        API["Gated Status API"]
+        AUTH["Subscription Verification"]
     end
 
-    %% Data Flow
-    Monitor -- "Writes State (Service Role Key)" --> State
-    Monitor -- "Logs Events" --> Events
-    Monitor -- "Fires Notifications" --> Push
-    Monitor <--> Dashboard
+    subgraph "Mobile App"
+        APP_UI["PCMonitorHub.js (UI States)"]
+    end
+
+    PC <-->|Stealth Check| MONITOR
+    MONITOR --> DETECTION
+    DETECTION -->|Update State| DB_STATE
+    DETECTION -->|Trigger| PUSH
+    PUSH -->|Relational Join| DB_SUB
+    PUSH -->|Verify Status| DB_USER
+    PUSH -->|Alert| EXPO
     
-    Backend -- "Reads State (Anon Key)" --> State
-    Backend -- "Manages Subs" --> Subs
-    
-    UI -- "Polls every 30s" --> API
-    UI -- "Opts in to alerts" --> Subscribe
-    Push -- "Triggers Alert" --> UI
-    
-    classDef secure fill:#e11d48,stroke:#9f1239,stroke-width:2px,color:#fff;
-    classDef db fill:#059669,stroke:#047857,stroke-width:2px,color:#fff;
-    classDef app fill:#2563eb,stroke:#1d4ed8,stroke-width:2px,color:#fff;
-    
-    class Monitor secure;
-    class State,Events,Subs db;
-    class UI,Push app;
+    APP_UI <-->|Poll Status| API
+    API <-->|Verify| AUTH
+    API <-->|Fetch State| DB_STATE
+    API <-->|Check Sub| DB_SUB
 ```
 
 ---
 
-## 2. Component Breakdown
+## 2. Working Mechanism: The "Ghost-Mode" Loop
 
-### A. The Stealth Microservice (Railway)
-*   **Role**: The isolated detection engine.
-*   **Technology**: Python, Playwright, `playwright-stealth`, Flask.
-*   **Imperva Evasion**: Strips `navigator.webdriver` flags, injects modern `Sec-Ch-Ua` headers, and uses randomized viewport sizes to mimic a human Windows 10 Chrome user.
-*   **Live Dashboard**: Runs a lightweight Flask/SocketIO server on the main thread, broadcasting live JPEG screenshots and system logs to a secure URL.
+Every 30-60 minutes (configurable), the monitor initiates a check. To remain undetected by **Imperva**, it follows a strict isolation protocol.
 
-#### Detection Heuristics Flow
+### Step A: Total Session Isolation
+1.  **Browser Destruction**: The previous browser instance is completely killed. No cache, no cookies, no local storage persists.
+2.  **Proxy Jump**: A new gateway is selected from the 100-node Webshare pool.
+3.  **Fingerprint Randomization**: A unique User-Agent and viewport are assigned.
+
+### Step B: Human Behavioral Simulation
+To bypass behavioral analysis, the monitor does NOT just load the page. It mimics a human:
+*   **Bezier Curves**: Mouse movements follow organic, non-linear paths.
+*   **Gaussian Delays**: Wait times between actions are calculated using a normal distribution (no robotic "exactly 2 seconds" waits).
+*   **Momentum Scrolling**: The bot scrolls up and down randomly to simulate reading.
+
+### Step C: The 6-Sensor Detection Engine
+The system doesn't just look for "Queue". it uses a confidence-based fusion of 6 independent sensors:
+
+| Sensor | Description | Weight/Confidence |
+| :--- | :--- | :--- |
+| **Network Traffic** | Detects background calls to `queue-it.net`. | 100% (Instant Live) |
+| **URL Redirect** | Detects `waitingroom` or `queue-it` in the address bar. | 100% (Instant Live) |
+| **DOM Heuristics** | Scans for hidden `queue-it.js` or `Challenge_Banner` IDs. | 80% |
+| **Cookie Fingerprint** | Detects the `QueueIT` cookie dropped by the WAF. | 60% |
+| **Text Keywords** | Intelligent, case-insensitive scan (e.g., "Hi, Trainer!", "Virtual Queue"). | 40% |
+| **Regex Timer** | Detects digital or text countdowns (e.g., `00:05:00`, `10 mins`). | 40% |
+
+---
+
+## 3. The Premium Gating Logic
+
+We ensure that **Zero Alerts** are leaked to non-premium or expired users through a real-time Relational Join.
+
 ```mermaid
-flowchart TD
-    Start[Load pokemoncenter.com] --> Wait[Wait 3s for Scripts]
-    Wait --> Analyze{Analyze Signals}
+sequenceDiagram
+    participant M as Monitor Script
+    participant S as Supabase (Relational)
+    participant E as Expo Push Service
+    participant U as User Device
+
+    M->>S: 🔍 Fetch Subscribers WHERE is_active=true
+    Note over S: Join with 'users' table on id
+    S-->>M: Return { push_tokens[], subscription_status, subscription_end }
     
-    Analyze --> |Signal 1| Network[Intercept queue-it.net calls]
-    Analyze --> |Signal 2| DOM[Scan for queue-it.js tags]
-    Analyze --> |Signal 3| Cookies[Detect QueueITAccepted cookie]
-    Analyze --> |Signal 4| Text[Regex: 00:00:00 & 'Hi, Trainer!']
-    
-    Network & DOM & Cookies & Text --> Score{Calculate Confidence}
-    
-    Score -->|> 2 Signals Fired| Trigger[State = QUEUE_ACTIVE]
-    Score -->|< 2 Signals Fired| Normal[State = NORMAL]
-    
-    Trigger --> DB[Update Supabase]
-    Normal --> DB
-    
-    DB --> |If transition to Active| Push[Fire Expo Push Notification]
+    loop For each Subscriber
+        M->>M: Verify status == 'active'
+        M->>M: Verify end_date > now()
+        
+        alt Valid Premium
+            M->>E: Send Push to all tokens in array
+            E->>U: 🚨 "QUEUE IS LIVE!"
+        else Expired or Free
+            M->>M: Skip User (Security Gating)
+        end
+    end
 ```
-
-### B. The Database (Supabase)
-*   **Role**: The source of truth for monitor state and premium subscriptions.
-*   **Row Level Security (RLS)**:
-    *   **Write Access**: Exclusively locked to the `service_role` key. Only the Railway microservice can alter the state.
-    *   **Read Access**: Open to the `anon` key, allowing the FastAPI backend to securely read the status without exposing write privileges.
-
-### C. The Backend (FastAPI)
-*   **Role**: The gatekeeper. Prevents free users from accessing the live state.
-*   **Zero-Information Policy**:
-    *   The `/status` endpoint checks user premium status.
-    *   If **Free**: Returns `{"state": "LOCKED"}` immediately. No database call is made.
-    *   If **Premium**: Performs parallel async requests (`asyncio.gather`) to fetch both the global site state and the user's specific `is_subscribed` status to determine UI rendering.
-
-### D. The Mobile App (React Native)
-*   **Role**: The user interface (`PCMonitorHub.js`).
-*   **State Machine**:
-    1.  **LOCKED**: Blurred glassmorphism overlay with a padlock. Tapping redirects to the premium paywall.
-    2.  **NORMAL (Unsubscribed)**: Shows "Site Normal" with a prominent blue "Enable Alerts" CTA.
-    3.  **NORMAL (Subscribed)**: Shows a breathing green pulse animation and an "Alerts On" badge.
-    4.  **QUEUE ACTIVE**: Overrides the UI with a vibrant red gradient, a fast-pulsing animation, and a "JOIN NOW" button linked directly to the Pokémon Center.
-*   **Polling**: Silently re-fetches `/status` every 30 seconds.
 
 ---
 
-## 3. Fail-Safe Mechanisms
+## 4. User Scenarios
 
-1.  **Smart Key Selector**: The microservice prioritizes the `SUPABASE_SERVICE_ROLE_KEY`. If a network error or permission issue occurs, it logs a warning and automatically falls back to `SUPABASE_ANON_KEY` to attempt a save.
-2.  **Idempotent Opt-ins**: The `/subscribe` FastAPI endpoint uses Supabase's `resolution=merge-duplicates`. Rapid repeated taps on the "Enable Alerts" button will not crash the server or bloat the database.
-3.  **Alert Cooldowns**: The microservice tracks state transitions. Expo push notifications are only fired exactly when the state flips from `NORMAL` to `QUEUE_ACTIVE`, preventing push-notification spam during network jitter.
+### Scenario 1: The Free User
+*   **Mobile App**: The `PCMonitorHub` sees the user is not premium. It displays a blurred "LOCKED" card with a padlock. 🔒
+*   **API**: The FastAPI backend refuses to return any live data, returning `state: LOCKED`.
+*   **Result**: The user is encouraged to upgrade but sees zero queue intelligence.
 
-## 4. Deployment Instructions
+### Scenario 2: The Premium User (Not Subscribed)
+*   **Mobile App**: Sees the monitor is "Normal".
+*   **Call to Action**: The subtitle says: *"Tap 'Enable Alerts' to get notified instantly! 🔔"*.
+*   **Result**: User has access but must opt-in to notifications.
 
-1.  **Backend**: Deploy the updated `app.py` to the Contabo VPS.
-2.  **Database**: The `pokemon-center-queue-monitor.sql` schema and RLS policies are fully applied.
-3.  **Microservice**: Connect the isolated GitHub repository to Railway.app. Ensure the following variables are set:
-    *   `SUPABASE_URL`
-    *   `SUPABASE_SERVICE_ROLE_KEY`
-    *   `PYTHONUNBUFFERED=1`
+### Scenario 3: The Premium User (Subscribed)
+*   **Mobile App**: Subtitle confirms *"Monitoring 24/7 • Site Normal"*.
+*   **Alert**: The moment a queue hits, they receive a push notification on all their devices.
+*   **Join**: They click the "JOIN" button and are taken directly to the Pokémon Center waiting room.
+
+### Scenario 4: The Expired User
+*   **Context**: User was premium and subscribed, but their sub ended yesterday.
+*   **Security Gating**: The Monitor Script detects their expiry in the real-time join. 
+*   **Result**: They receive **zero notifications**. The App UI reverts to the "LOCKED" state automatically.
+
+---
+
+## 5. System Health & Maintenance
+
+The monitor is designed for "Set and Forget" operation:
+*   **Auto-Healing**: If it detects an "Error 15" (Block), it enters a cooldown and jumps to a new proxy node automatically.
+*   **Status Dashboard**: A live web dashboard (Socket.io) shows the monitor's "eyes" in real-time, including logs and confidence scores.
+*   **Confidence Threshold**: `is_active` is only triggered if **2 or more sensors** fire simultaneously, ensuring near-zero false alarms.
