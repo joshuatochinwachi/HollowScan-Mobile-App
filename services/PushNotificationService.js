@@ -73,6 +73,9 @@ const handleNotificationTap = (data) => {
     if (data.product_id) {
         console.log('[PUSH] Navigating to product:', data.product_id);
         NavigationService.navigate('ProductDetail', { productId: data.product_id });
+    } else if (data.type === 'pc_monitor') {
+        console.log('[PUSH] Pokémon Center alert detected, navigating Home');
+        NavigationService.navigate('Home');
     }
 };
 
