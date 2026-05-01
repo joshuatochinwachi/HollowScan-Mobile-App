@@ -23,6 +23,7 @@ const PCMonitorHub = () => {
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
     const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
     // Pulse animation for "Live" status
@@ -79,6 +80,9 @@ const PCMonitorHub = () => {
             const data = await response.json();
             if (data.success) {
                 await fetchStatus();
+                // Show confirmation for 5 seconds then hide
+                setShowConfirmation(true);
+                setTimeout(() => setShowConfirmation(false), 5000);
             }
         } catch (error) {
             console.error('[MONITOR] Subscribe error:', error);
@@ -115,6 +119,17 @@ const PCMonitorHub = () => {
         );
     }
 
+    const isQueueActive = status?.state === 'QUEUE_ACTIVE';
+    const isSubscribed = status?.is_subscribed;
+
+    // SMART-HIDE LOGIC: 
+    // Hide if: Premium AND Subscribed AND Site is Normal AND not in confirmation window
+    const shouldHide = isPremium && isSubscribed && !isQueueActive && !showConfirmation;
+    
+    if (shouldHide) {
+        return null;
+    }
+    
     // STATE: FREE USER (LOCKED)
     if (status?.state === 'LOCKED' || !isPremium) {
         return (
@@ -144,9 +159,6 @@ const PCMonitorHub = () => {
             </TouchableOpacity>
         );
     }
-
-    const isQueueActive = status?.state === 'QUEUE_ACTIVE';
-    const isSubscribed = status?.is_subscribed;
 
     // STATE: PREMIUM (QUEUE ACTIVE)
     if (isQueueActive) {
