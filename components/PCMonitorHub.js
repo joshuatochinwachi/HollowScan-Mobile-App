@@ -71,7 +71,7 @@ const PCMonitorHub = () => {
             const response = await fetch(`${Constants.API_BASE_URL}/v1/monitor/pokemon-center/subscribe`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     user_id: user.id,
                     fcm_token: 'TOPIC_SUBSCRIBER'
                 }),
@@ -86,7 +86,7 @@ const PCMonitorHub = () => {
             setSubmitting(false);
         }
     };
-    
+
     const handleDisableAlerts = async () => {
         if (!user?.id || submitting) return;
         setSubmitting(true);
@@ -118,7 +118,7 @@ const PCMonitorHub = () => {
     // STATE: FREE USER (LOCKED)
     if (status?.state === 'LOCKED' || !isPremium) {
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => navigation.navigate('PremiumPaywall')}
                 style={styles.container}
@@ -151,7 +151,7 @@ const PCMonitorHub = () => {
     // STATE: PREMIUM (QUEUE ACTIVE)
     if (isQueueActive) {
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => Linking.openURL('https://www.pokemoncenter.com')}
                 style={[styles.container, styles.activeContainer]}
@@ -191,13 +191,13 @@ const PCMonitorHub = () => {
                         <View>
                             <Text style={[styles.title, { color: isDarkMode ? '#FFF' : '#000' }]}>Pokémon Center Status</Text>
                             <Text style={styles.subtitle}>
-                                {!isSubscribed ? "Tap 'Enable Alerts' to get notified instantly! 🔔" : "Monitoring 24/7 • Site Normal"}
+                                {!isSubscribed ? "Get notified instantly when the queue goes live! 🔔" : "You'll be notified as soon as the queue goes live! 🔔"}
                             </Text>
                         </View>
                     </View>
-                    
+
                     {!isSubscribed ? (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={handleEnableAlerts}
                             disabled={submitting}
                             style={styles.actionButtonBlue}
@@ -209,7 +209,7 @@ const PCMonitorHub = () => {
                             )}
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={handleDisableAlerts}
                             disabled={submitting}
                             style={styles.activeBadge}

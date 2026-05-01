@@ -510,8 +510,6 @@ const HomeScreen = () => {
                                 <Text style={styles.discountBadgeText}>-{discountPercent}%</Text>
                             </LinearGradient>
                         )}
-                        {/* POKEMON CENTER MONITOR HUB */}
-                        <PCMonitorHub />
                         {/* HEART BUTTON */}
                         <TouchableOpacity
                             onPress={(e) => { e.stopPropagation(); toggleSave(item); }}
