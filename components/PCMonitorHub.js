@@ -201,7 +201,7 @@ const PCMonitorHub = () => {
                     <View style={styles.leftSection}>
                         <Animated.View style={[styles.pulseCircle, { backgroundColor: '#4ADE80', opacity: pulseAnim }]} />
                         <View>
-                            <Text style={[styles.title, { color: isDarkMode ? '#FFF' : '#000' }]}>Pokémon Center Status</Text>
+                            <Text style={[styles.title, { color: isDarkMode ? '#FFF' : '#000' }]}>Pokémon Center Monitor</Text>
                             <Text style={styles.subtitle}>
                                 {!isSubscribed ? "Get notified instantly when the queue goes live! 🔔" : "You'll be notified as soon as the queue goes live! 🔔"}
                             </Text>
