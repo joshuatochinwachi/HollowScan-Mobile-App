@@ -45,6 +45,18 @@ jobs:
           }
           EOF
 
+      - name: Select Xcode 26 (Required for App Store from May 2026)
+        run: |
+          # Find the latest Xcode 26 installed on this runner
+          XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE_PATH" ]; then
+            echo "❌ Xcode 26 not found! Available Xcode versions:"
+            ls /Applications/ | grep Xcode
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          echo "✅ Selected: $(xcodebuild -version)"
+
       - name: Build iOS IPA (Local on GitHub)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
