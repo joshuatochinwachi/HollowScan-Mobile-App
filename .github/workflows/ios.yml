@@ -4,7 +4,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15 # Required for React Native 0.81+ (Xcode 16+)
+    runs-on: macos-latest # Updated: Xcode 26 required for App Store submissions from May 2026
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
