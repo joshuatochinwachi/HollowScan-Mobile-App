@@ -169,6 +169,87 @@ sequenceDiagram
     EvLoop-->>Flask: socketio.emit()
 ```
 
+---
+
+## **4. Pokémon Center Elite Monitor Architecture**
+
+The Pokémon Monitor uses a **Hybrid Concurrency Model** specifically designed for long-term stability and extreme bandwidth conservation.
+
+### **System Architecture Diagram**
+```mermaid
+graph TD
+    subgraph "Main Process (Flask Thread)"
+        DB[Live Dashboard]
+        SIO[Socket.IO Server]
+        Cache[Global Memory Cache<br/>'last_screenshot' + 'logs']
+    end
+
+    subgraph "Background Thread (Monitor Engine)"
+        Loop[Asyncio Event Loop]
+        PW[Playwright Browser]
+        Detect[Detection Engine]
+    end
+
+    subgraph "External Services"
+        PC[Pokémon Center]
+        Supa[Supabase DB]
+        Expo[Expo Push Service]
+    end
+
+    Loop --> PW
+    PW <--> PC
+    PW -- "Screenshot/Logs" --> Cache
+    Cache -- "Instant Load" --> DB
+    SIO -- "Real-time Stream" --> DB
+    Detect -- "Update State" --> Supa
+    Detect -- "Trigger Alert" --> Expo
+```
+
+### **Data Flow: Detection to Notification**
+```mermaid
+sequenceDiagram
+    participant PC as Pokémon Center
+    participant PW as Playwright (Async)
+    participant Mem as Memory Cache
+    participant Dash as Public Dashboard
+    participant Expo as Expo Push API
+    
+    Note over PW,PC: Checking Website...
+    PC-->>PW: HTML Content / Network Signals
+    PW->>PW: Run Detection Logic
+    
+    alt Queue Detected
+        PW->>Mem: Update 'last_screenshot'
+        PW->>Expo: POST /send (Push Notification)
+        Mem-->>Dash: socket.emit('screenshot')
+    else Normal State
+        PW->>Mem: Update 'last_screenshot' (Refresh View)
+        Mem-->>Dash: socket.emit('screenshot')
+    end
+```
+
+### **Thread 1 — The Web Dashboard (Main Thread)**
+*   **Role**: Handles all incoming HTTP and WebSocket connections.
+*   **Logic**: Runs the Flask application and the Socket.IO server.
+*   **Persistence**: Manages the `last_screenshot` and `recent_logs` memory cache. When a new user connects, this thread immediately serves them the cached data from memory, ensuring **Zero Extra Bandwidth** usage for new visitors.
+
+### **Thread 2 — The Monitor Engine (Background Daemon)**
+*   **Role**: Executes the actual scraping and detection logic.
+*   **Isolation**: Launched as a `daemon` thread to ensure it can be managed independently of the web server.
+*   **Async Event Loop**: Creates a private `asyncio` event loop to handle the high-concurrency needs of Playwright and `httpx` (Supabase/Push Notifications).
+
+### **Real-Time Pipeline Flow**
+1.  **Capture**: The Monitor Thread (Thread 2) takes a 50% quality JPEG screenshot.
+2.  **Broadcast**: It uses `socketio.emit()` to jump across the thread boundary and push the image to all users in Thread 1.
+3.  **State Management**: Updates global trackers (`monitor_stats`) so that the "Current State" (NORMAL vs QUEUE_ACTIVE) is always synchronized across the entire system.
+4.  **Intelligent Throttling**: Implements `asyncio.sleep()` during the 3–6 hour cooldowns, which releases CPU resources while waiting, keeping the VPS cost low.
+
+### **Concurrency Safeguards**
+*   **Session Isolation**: Every check cycle creates a completely fresh Browser instance and Context, preventing memory leaks and tracking-cookie accumulation.
+*   **Atomic Retries**: A strict retry counter (`Attempt X/50`) ensures that even if Imperva blocks a thread, it won't trigger an infinite loop that exhausts bandwidth.
+
+---
+
 **Thread 2 — Supabase uploads (fire-and-forget)**
 
 ```python

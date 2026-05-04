@@ -21,7 +21,7 @@ HollowScan is an industrial-grade arbitrage pipeline designed for high-concurren
 ### ⚙️ Backend & Ingestion (Infrastructure)
 - **Engine**: FastAPI (Async Performance Optimized).
 - **Ingestion**: **Discord Stealth Archiver** (Playwright + Flask) deployed on **Contabo VPS**.
-- **Microservices**: **Pokémon Center Elite Monitor** (Playwright Stealth + Imperva Evasion) deployed on **Railway.app**.
+- **Microservices**: **Pokémon Center Elite Monitor** (Playwright Stealth + Imperva Evasion + Bandwidth Saver) deployed on **Railway.app**.
 - **Database**: Supabase (PostgreSQL with Row Level Security).
 - **Verification**: `google-api-python-client` & `httpx` for Apple S2S.
 - **DevOps**: EAS Build pipelines + Environment Isolation.
@@ -92,7 +92,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
 - **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
 - **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services.
-- **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: Detailed technical overview of the stealth microservice, fail-safes, and Live Queue Dashboard.
+- **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: The "Elite" technical overview—covering Imperva evasion, the 50-retry resilient logic, and the 90% Bandwidth Saver engine.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
