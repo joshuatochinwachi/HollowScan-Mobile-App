@@ -238,15 +238,22 @@ sequenceDiagram
 *   **Isolation**: Launched as a `daemon` thread to ensure it can be managed independently of the web server.
 *   **Async Event Loop**: Creates a private `asyncio` event loop to handle the high-concurrency needs of Playwright and `httpx` (Supabase/Push Notifications).
 
+### **State-Aware Scheduling (The Watchdog Logic)**
+The monitor implements a **Persistent Watchdog** state machine within its async loop. This allows it to handle complex scheduling concurrently with the live dashboard:
+1.  **Standard Sleep**: During weekends or off-peak hours (8 PM – 2 PM UTC), the loop uses a "Long Sleep" pattern with `asyncio.sleep()`, yielding all resources to the dashboard.
+2.  **Power Hour Active**: Between 2 PM and 8 PM UTC, the loop switches to "High-Frequency" polling every 45-60 minutes.
+3.  **Watchdog Override**: If a queue is detected, the monitor **overrides its own bedtime**. It enters a "Queue Watch" state, scanning every **30 minutes** until the site returns to NORMAL, ensuring it never misses the end of a long-duration event.
+
 ### **Real-Time Pipeline Flow**
 1.  **Capture**: The Monitor Thread (Thread 2) takes a 50% quality JPEG screenshot.
 2.  **Broadcast**: It uses `socketio.emit()` to jump across the thread boundary and push the image to all users in Thread 1.
 3.  **State Management**: Updates global trackers (`monitor_stats`) so that the "Current State" (NORMAL vs QUEUE_ACTIVE) is always synchronized across the entire system.
-4.  **Intelligent Throttling**: Implements `asyncio.sleep()` during the 3–6 hour cooldowns, which releases CPU resources while waiting, keeping the VPS cost low.
+4.  **Intelligent Throttling**: Implemented via `asyncio.sleep()`, ensuring the background engine consumes near-zero CPU while waiting for the next check cycle.
 
 ### **Concurrency Safeguards**
 *   **Session Isolation**: Every check cycle creates a completely fresh Browser instance and Context, preventing memory leaks and tracking-cookie accumulation.
-*   **Atomic Retries**: A strict retry counter (`Attempt X/50`) ensures that even if Imperva blocks a thread, it won't trigger an infinite loop that exhausts bandwidth.
+*   **Atomic State Locking**: The `monitor_stats["state"]` is updated atomically before the scheduling logic calculates the next sleep, ensuring the **Watchdog Override** always has the most recent data.
+*   **Retry Resilience**: A strict retry counter (`Attempt X/50`) ensures that even if Imperva blocks a thread, it won't trigger an infinite loop that exhausts bandwidth.
 
 ---
 

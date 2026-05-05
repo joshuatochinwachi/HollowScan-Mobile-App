@@ -21,7 +21,7 @@ HollowScan is an industrial-grade arbitrage pipeline designed for high-concurren
 ### ⚙️ Backend & Ingestion (Infrastructure)
 - **Engine**: FastAPI (Async Performance Optimized).
 - **Ingestion**: **Discord Stealth Archiver** (Playwright + Flask) deployed on **Contabo VPS**.
-- **Microservices**: **Pokémon Center Elite Monitor** (Playwright Stealth + Imperva Evasion + Bandwidth Saver) deployed on **Railway.app**.
+- **Microservices**: **Pokémon Center Elite Monitor** (Playwright Stealth + Imperva Evasion + Power Hour Scheduling + Persistent Watchdog) deployed on **Railway.app**.
 - **Database**: Supabase (PostgreSQL with Row Level Security).
 - **Verification**: `google-api-python-client` & `httpx` for Apple S2S.
 - **DevOps**: EAS Build pipelines + Environment Isolation.
@@ -92,7 +92,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
 - **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
 - **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services.
-- **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: The "Elite" technical overview—covering Imperva evasion, the 50-retry resilient logic, and the 90% Bandwidth Saver engine.
+- **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: The "Elite" technical overview—covering Imperva evasion, State-Aware Persistent Watchdog override, and the Power Hour bandwidth-saver engine.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
@@ -152,7 +152,7 @@ To prevent **Cache Stampedes** during high-velocity restock events, the backend 
 Ensures high availability during cold boots or database maintenance. The backend implements a 90-second exponential backoff loop during the `lifespan` event, iteratively pinging Supabase until readiness is confirmed before accepting client traffic.
 
 ### 3. Stealth Heuristics (Gaussian Randomization)
-The ingestion engine bypasses sophisticated anti-bot detection using **Gaussian distributed delays** (`random.gauss`) and high-fidelity Bezier mouse curves. This ensures that scraper timing never forms a detectable signature.
+The ingestion engine bypasses sophisticated anti-bot detection using **Gaussian distributed delays** (`random.gauss`) and high-fidelity Bezier mouse curves. The monitor microservice further enhances this with a **State-Aware Watchdog** that overrides standard sleep cycles if a live event is detected.
 
 ### 4. The "iOS Plunger" & SK 2 Integration
 Resolves the classic "S2S Webhook vs. Receipt Verification" race condition. By using StoreKit 2 `appAccountToken` mapping and an async background task (the Plunger), the system reconciles purchase integrity even if notifications arrive out of order.

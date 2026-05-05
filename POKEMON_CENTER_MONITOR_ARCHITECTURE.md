@@ -49,13 +49,29 @@ graph TD
 
 ## 2. Working Mechanism: The "Ghost-Mode" Loop
 
-Every 3–5 hours (configurable), the monitor initiates a check cycle. To remain undetected by **Imperva**, it follows a strict isolation protocol.
+Every weekday (Monday–Friday), the monitor operates on a high-intensity **"Power Hour" schedule**. It remains completely dormant during weekends and off-hours to maximize bandwidth conservation.
 
 ### Step A: Total Session Isolation & Bandwidth Optimization
 1.  **Browser Destruction**: The previous browser instance is completely killed. No cache, no cookies, no local storage persists.
 2.  **Proxy Jump**: A new gateway is selected from the 100-node Webshare residential pool for every check.
 3.  **⚡ Bandwidth Saver Mode**: To stay within a 1GB/month budget, the monitor **blocks all images and heavy CSS assets** during the scan. This reduces page weight by ~90%, allowing for thousands of checks per month.
-4.  **Smart Polling**: Operates on a variable 3–5 hour cycle to maintain a low profile while ensuring daily readiness.
+4.  **🕒 Power Hour Scheduling**: The engine normally wakes up between **2:00 PM and 8:00 PM UTC** on weekdays. During this window, it performs scans every **45–60 minutes**.
+5.  **🐕 Persistent Watchdog (Override)**: If a queue is detected, the monitor **ignores its bedtime**. It will stay awake and increase scan frequency to **every 30 minutes** until the site returns to normal.
+6.  **Weekend Pause**: The system automatically enters a deep-sleep state on Saturdays and Sundays (unless a queue was already active).
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: Weekend or Off-Hours
+    Idle --> PowerHour: Weekday 14:00 UTC
+    PowerHour --> Idle: Weekday 20:00 UTC
+    
+    PowerHour --> QueueWatch: Queue Detected!
+    Idle --> QueueWatch: Queue Detected! (Override)
+    
+    QueueWatch --> QueueWatch: Scan every 30m
+    QueueWatch --> Idle: Queue Over & Past 20:00 UTC
+    QueueWatch --> PowerHour: Queue Over & Inside Window
+```
 
 ### Step B: Human Behavioral Simulation
 To bypass behavioral analysis, the monitor does NOT just load the page. It mimics a human:
@@ -119,7 +135,7 @@ If Imperva blocks an IP, the monitor doesn't give up. It applies a **15-second p
 *   **Result**: The user is encouraged to upgrade but sees zero queue intelligence.
 
 ### Scenario 2: The Premium User
-*   **Mobile App**: Subtitle confirms *"Monitoring 24/7 • Site Normal"*.
+*   **Mobile App**: Subtitle confirms *"Monitoring Active • Site Normal"*.
 *   **Alert**: The moment a queue hits, they receive a push notification on all their devices.
 *   **Action**: They click the "JOIN" button and are taken directly to the Pokémon Center waiting room.
 
@@ -130,3 +146,4 @@ If Imperva blocks an IP, the monitor doesn't give up. It applies a **15-second p
 *   **Persistent Dashboard**: Uses a server-side memory cache (Socket.io) to store the `last_screenshot` and `recent_logs`. Stakeholders opening the link see the latest data **instantly** without triggering a new, expensive scan.
 *   **Auto-Healing**: If the monitor hits the 50-retry limit without success, it enters an emergency sleep mode to protect the proxy pool and bandwidth.
 *   **Confidence Threshold**: `is_active` is only triggered if **2 or more sensors** fire simultaneously, ensuring near-zero false alarms.
+*   **State-Aware Sleep**: Automatically respects the 2 PM – 8 PM UTC window but stays awake past bedtime if a queue is detected.
