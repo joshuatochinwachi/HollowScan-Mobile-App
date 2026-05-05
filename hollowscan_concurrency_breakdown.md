@@ -171,91 +171,6 @@ sequenceDiagram
 
 ---
 
-## **4. Pokémon Center Elite Monitor Architecture**
-
-The Pokémon Monitor uses a **Hybrid Concurrency Model** specifically designed for long-term stability and extreme bandwidth conservation.
-
-### **System Architecture Diagram**
-```mermaid
-graph TD
-    subgraph "Main Process (Flask Thread)"
-        DB[Live Dashboard]
-        SIO[Socket.IO Server]
-        Cache[Global Memory Cache<br/>'last_screenshot' + 'logs']
-    end
-
-    subgraph "Background Thread (Monitor Engine)"
-        Loop[Asyncio Event Loop]
-        PW[Playwright Browser]
-        Detect[Detection Engine]
-    end
-
-    subgraph "External Services"
-        PC[Pokémon Center]
-        Supa[Supabase DB]
-        Expo[Expo Push Service]
-    end
-
-    Loop --> PW
-    PW <--> PC
-    PW -- "Screenshot/Logs" --> Cache
-    Cache -- "Instant Load" --> DB
-    SIO -- "Real-time Stream" --> DB
-    Detect -- "Update State" --> Supa
-    Detect -- "Trigger Alert" --> Expo
-```
-
-### **Data Flow: Detection to Notification**
-```mermaid
-sequenceDiagram
-    participant PC as Pokémon Center
-    participant PW as Playwright (Async)
-    participant Mem as Memory Cache
-    participant Dash as Public Dashboard
-    participant Expo as Expo Push API
-    
-    Note over PW,PC: Checking Website...
-    PC-->>PW: HTML Content / Network Signals
-    PW->>PW: Run Detection Logic
-    
-    alt Queue Detected
-        PW->>Mem: Update 'last_screenshot'
-        PW->>Expo: POST /send (Push Notification)
-        Mem-->>Dash: socket.emit('screenshot')
-    else Normal State
-        PW->>Mem: Update 'last_screenshot' (Refresh View)
-        Mem-->>Dash: socket.emit('screenshot')
-    end
-```
-
-### **Thread 1 — The Web Dashboard (Main Thread)**
-*   **Role**: Handles all incoming HTTP and WebSocket connections.
-*   **Logic**: Runs the Flask application and the Socket.IO server.
-*   **Persistence**: Manages the `last_screenshot` and `recent_logs` memory cache. When a new user connects, this thread immediately serves them the cached data from memory, ensuring **Zero Extra Bandwidth** usage for new visitors.
-
-### **Thread 2 — The Monitor Engine (Background Daemon)**
-*   **Role**: Executes the actual scraping and detection logic.
-*   **Isolation**: Launched as a `daemon` thread to ensure it can be managed independently of the web server.
-*   **Async Event Loop**: Creates a private `asyncio` event loop to handle the high-concurrency needs of Playwright and `httpx` (Supabase/Push Notifications).
-
-### **State-Aware Scheduling (The Watchdog Logic)**
-The monitor implements a **Persistent Watchdog** state machine within its async loop. This allows it to handle complex scheduling concurrently with the live dashboard:
-1.  **Standard Sleep**: During weekends or off-peak hours (8 PM – 2 PM UTC), the loop uses a "Long Sleep" pattern with `asyncio.sleep()`, yielding all resources to the dashboard.
-2.  **Power Hour Active**: Between 2 PM and 8 PM UTC, the loop switches to "High-Frequency" polling every 45-60 minutes.
-3.  **Watchdog Override**: If a queue is detected, the monitor **overrides its own bedtime**. It enters a "Queue Watch" state, scanning every **30 minutes** until the site returns to NORMAL, ensuring it never misses the end of a long-duration event.
-
-### **Real-Time Pipeline Flow**
-1.  **Capture**: The Monitor Thread (Thread 2) takes a 50% quality JPEG screenshot.
-2.  **Broadcast**: It uses `socketio.emit()` to jump across the thread boundary and push the image to all users in Thread 1.
-3.  **State Management**: Updates global trackers (`monitor_stats`) so that the "Current State" (NORMAL vs QUEUE_ACTIVE) is always synchronized across the entire system.
-4.  **Intelligent Throttling**: Implemented via `asyncio.sleep()`, ensuring the background engine consumes near-zero CPU while waiting for the next check cycle.
-
-### **Concurrency Safeguards**
-*   **Session Isolation**: Every check cycle creates a completely fresh Browser instance and Context, preventing memory leaks and tracking-cookie accumulation.
-*   **Atomic State Locking**: The `monitor_stats["state"]` is updated atomically before the scheduling logic calculates the next sleep, ensuring the **Watchdog Override** always has the most recent data.
-*   **Retry Resilience**: A strict retry counter (`Attempt X/50`) ensures that even if Imperva blocks a thread, it won't trigger an infinite loop that exhausts bandwidth.
-
----
 
 **Thread 2 — Supabase uploads (fire-and-forget)**
 
@@ -807,6 +722,92 @@ async def background_notification_worker():
 
 ---
 
+## **Part 4 — Pokémon Center Elite Monitor Architecture**
+
+The Pokémon Monitor uses a **Hybrid Concurrency Model** specifically designed for long-term stability and extreme bandwidth conservation.
+
+### **System Architecture Diagram**
+```mermaid
+graph TD
+    subgraph "Main Process (Flask Thread)"
+        DB[Live Dashboard]
+        SIO[Socket.IO Server]
+        Cache[Global Memory Cache<br/>'last_screenshot' + 'logs']
+    end
+
+    subgraph "Background Thread (Monitor Engine)"
+        Loop[Asyncio Event Loop]
+        PW[Playwright Browser]
+        Detect[Detection Engine]
+    end
+
+    subgraph "External Services"
+        PC[Pokémon Center]
+        Supa[Supabase DB]
+        Expo[Expo Push Service]
+    end
+
+    Loop --> PW
+    PW <--> PC
+    PW -- "Screenshot/Logs" --> Cache
+    Cache -- "Instant Load" --> DB
+    SIO -- "Real-time Stream" --> DB
+    Detect -- "Update State" --> Supa
+    Detect -- "Trigger Alert" --> Expo
+```
+
+### **Data Flow: Detection to Notification**
+```mermaid
+sequenceDiagram
+    participant PC as Pokémon Center
+    participant PW as Playwright (Async)
+    participant Mem as Memory Cache
+    participant Dash as Public Dashboard
+    participant Expo as Expo Push API
+    
+    Note over PW,PC: Checking Website...
+    PC-->>PW: HTML Content / Network Signals
+    PW->>PW: Run Detection Logic
+    
+    alt Queue Detected
+        PW->>Mem: Update 'last_screenshot'
+        PW->>Expo: POST /send (Push Notification)
+        Mem-->>Dash: socket.emit('screenshot')
+    else Normal State
+        PW->>Mem: Update 'last_screenshot' (Refresh View)
+        Mem-->>Dash: socket.emit('screenshot')
+    end
+```
+
+### **Thread 1 — The Web Dashboard (Main Thread)**
+*   **Role**: Handles all incoming HTTP and WebSocket connections.
+*   **Logic**: Runs the Flask application and the Socket.IO server.
+*   **Persistence**: Manages the `last_screenshot` and `recent_logs` memory cache. When a new user connects, this thread immediately serves them the cached data from memory, ensuring **Zero Extra Bandwidth** usage for new visitors.
+
+### **Thread 2 — The Monitor Engine (Background Daemon)**
+*   **Role**: Executes the actual scraping and detection logic.
+*   **Isolation**: Launched as a `daemon` thread to ensure it can be managed independently of the web server.
+*   **Async Event Loop**: Creates a private `asyncio` event loop to handle the high-concurrency needs of Playwright and `httpx` (Supabase/Push Notifications).
+
+### **State-Aware Scheduling (The Watchdog Logic)**
+The monitor implements a **Persistent Watchdog** state machine within its async loop. This allows it to handle complex scheduling concurrently with the live dashboard:
+1.  **Standard Sleep**: During weekends or off-peak hours (8 PM – 2 PM UTC), the loop uses a "Long Sleep" pattern with `asyncio.sleep()`, yielding all resources to the dashboard.
+2.  **Power Hour Active**: Between 2 PM and 8 PM UTC, the loop switches to "High-Frequency" polling every 45-60 minutes.
+3.  **Watchdog Override**: If a queue is detected, the monitor **overrides its own bedtime**. It enters a "Queue Watch" state, scanning every **30 minutes** until the site returns to NORMAL, ensuring it never misses the end of a long-duration event.
+
+### **Real-Time Pipeline Flow**
+1.  **Capture**: The Monitor Thread (Thread 2) takes a 50% quality JPEG screenshot.
+2.  **Broadcast**: It uses `socketio.emit()` to jump across the thread boundary and push the image to all users in Thread 1.
+3.  **State Management**: Updates global trackers (`monitor_stats`) so that the "Current State" (NORMAL vs QUEUE_ACTIVE) is always synchronized across the entire system.
+4.  **Intelligent Throttling**: Implemented via `asyncio.sleep()`, ensuring the background engine consumes near-zero CPU while waiting for the next check cycle.
+
+### **Concurrency Safeguards**
+*   **Session Isolation**: Every check cycle creates a completely fresh Browser instance and Context, preventing memory leaks and tracking-cookie accumulation.
+*   **Atomic State Locking**: The `monitor_stats["state"]` is updated atomically before the scheduling logic calculates the next sleep, ensuring the **Watchdog Override** always has the most recent data.
+*   **Retry Resilience**: A strict retry counter (`Attempt X/50`) ensures that even if Imperva blocks a thread, it won't trigger an infinite loop that exhausts bandwidth.
+
+---
+
 ## Master Comparison Table
 
 | Function / Pattern | File | Type | Why |
@@ -838,10 +839,14 @@ async def background_notification_worker():
 | `iOS Plunger` | mobile API | **Async Worker** | Reconciles IAP race conditions |
 | `Content Hashing` | scraper | **Distributed Lock** | Prevents duplicate alerts in cluster |
 | `Weighted Sampling` | scraper | **Priority Logic** | Optimizes infra load vs deal discovery |
+| `monitor_loop()` | monitor | **Async** | Playwright & State Machine logic |
+| `run_monitor()` | monitor | **Thread** | Bridges sync Flask to async Monitor loop |
+| `calculate_next_sleep()` | monitor | **Sync** | Core State-Aware scheduling logic |
+| `log_to_dashboard()` | monitor | **Sync + SocketIO** | Jumps thread boundary to broadcast logs |
 
 ---
 
-## The One Shared Pattern Across All Three
+## The One Shared Pattern Across All Four
 
 Every service uses the same bridge between blocking code and async:
 
@@ -857,4 +862,4 @@ flowchart LR
     BRIDGE -->|"resume"| ASYNC
 ```
 
-The pattern appears in all three files under different names but does the same thing: async code offloads blocking work to threads so the event loop stays free to handle other tasks. This is the fundamental pattern behind all three services working together without freezing.
+The pattern appears in all four files under different names but does the same thing: async code offloads blocking work to threads so the event loop stays free to handle other tasks. This is the fundamental pattern behind all four services working together without freezing.
