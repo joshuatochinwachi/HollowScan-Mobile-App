@@ -65,6 +65,13 @@ const SavedScreen = ({ navigation }) => {
                     resizeMode="contain"
                     onError={() => setImageError(true)}
                 />
+                {/* Fallback Label if remote image fails to load */}
+                {imageError && (
+                    <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textSecondary }}>HollowScan</Text>
+                        <Text style={{ fontSize: 10, color: colors.textSecondary, opacity: 0.5 }}>Image Pending</Text>
+                    </View>
+                )}
                 <View style={styles.cardContent}>
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{data.title}</Text>
                     <View style={styles.priceRow}>

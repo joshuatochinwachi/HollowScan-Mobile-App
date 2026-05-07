@@ -13,27 +13,57 @@ import Constants from '../Constants';
 const { width } = Dimensions.get('window');
 
 const ProductDetailScreen = ({ route, navigation }) => {
-    const [product, setProduct] = React.useState(null);
+    const { product: initialProduct } = route.params || {};
+    const [product, setProduct] = React.useState(initialProduct);
     const [loading, setLoading] = React.useState(false);
     const [copiedLabel, setCopiedLabel] = useState(null);
+    const [imageError, setImageError] = useState(false);
     const { toggleSave, isSaved } = useContext(SavedContext);
     const { isDarkMode, isPremium: userIsPremium } = useContext(UserContext);
     const brand = Constants.BRAND;
+    const data = product ? (product.product_data || {}) : {};
 
-    // --- PREMIUM GATE CHECK ---
-    // This is the "Teaser" redirect logic. 
-    // If a user is FREE, they should NEVER see the product details.
-    // This handles: (1) Push Notifications (2) Deep Links (3) Manual Navigation
+    // --- HOOKS SECTION ---
+    
+    // 1. Premium Gate Check
     React.useEffect(() => {
-        // We check for product existence and user status
-        // Even if product.is_locked is true, we ONLY redirect if user is not premium.
-        // If a product comes from a notification (productId), 'product' becomes populated after fetch.
         if (product && !userIsPremium) {
-            console.log('[GATE] Free user detected on ProductDetail. Redirecting to Paywall...');
-            // navigation.replace removes the detail screen from history so they can't 'Go Back' into it.
             navigation.replace('PremiumPaywall');
         }
     }, [product, userIsPremium, navigation]);
+
+    // 2. Fetch/Update Product
+    React.useEffect(() => {
+        if (route.params?.product) {
+            setProduct(route.params.product);
+        } else if (route.params?.productId) {
+            const fetchProduct = async () => {
+                try {
+                    setLoading(true);
+                    const response = await fetch(`${Constants.API_BASE_URL}/v1/product/detail?product_id=${route.params.productId}`);
+                    const data = await response.json();
+                    if (data.success && data.product) {
+                        setProduct(data.product);
+                    }
+                } catch (e) {
+                    console.log(e);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchProduct();
+        }
+    }, [route.params?.productId, route.params?.product]);
+
+    // 3. Image Error Reset
+    React.useEffect(() => {
+        setImageError(false);
+    }, [product?.id]);
+
+    // Safety Guard: Early return for UI only
+    if (!product) return null;
+
+
 
     const colors = isDarkMode ? {
         bg: brand.DARK_BG,
@@ -63,34 +93,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         profitCard: '#FFFFFF'
     };
 
-    // Handle both direct navigation and deep link
-    React.useEffect(() => {
-        if (route.params?.product) {
-            // Direct navigation from app
-            setProduct(route.params.product);
-            setLoading(false);
-        } else if (route.params?.productId) {
-            // Deep link navigation
-            const productId = route.params.productId;
-            setLoading(true);
-            const fetchProduct = async () => {
-                try {
-                    const response = await fetch(`${Constants.API_BASE_URL}/v1/product/detail?product_id=${productId}`);
-                    const data = await response.json();
-                    if (data.success && data.product) {
-                        setProduct(data.product);
-                    } else {
-                        console.error('[DEEPLINK] Product not found:', data.message);
-                    }
-                } catch (error) {
-                    console.error('[DEEPLINK] Fetch error:', error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchProduct();
-        }
-    }, [route.params]);
+
 
     if (loading) {
         return (
@@ -109,8 +112,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         );
     }
 
-    const data = product.product_data || {};
-    const saved = isSaved(product.id);
+
 
     // Helper to parse price data from API (handles "Was: X Now: Y" formats)
     const parsePriceData = (productData, region) => {
@@ -287,12 +289,9 @@ const ProductDetailScreen = ({ route, navigation }) => {
         return !d.is_redundant && !label.includes('price') && !label.includes('pricing');
     }) : [];
 
-    const [imageError, setImageError] = useState(false);
 
-    // Reset error state when product changes (crucial for deep-link navigation)
-    useEffect(() => {
-        setImageError(false);
-    }, [product?.id]);
+
+    const saved = isSaved(product.id);
 
     const imageSource = (data.image && !imageError) 
         ? { uri: data.image } 
@@ -327,6 +326,15 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         resizeMode="contain" 
                         onError={() => setImageError(true)}
                     />
+                    
+                    {/* Fallback Label if remote image fails to load */}
+                    {imageError && (
+                        <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textSecondary }}>HollowScan</Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, opacity: 0.6 }}>Image Pending</Text>
+                        </View>
+                    )}
+
                     <TouchableOpacity
                         style={[styles.saveBtn, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)' }]}
                         onPress={() => toggleSave(product)}

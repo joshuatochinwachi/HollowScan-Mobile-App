@@ -163,15 +163,16 @@ const HomeScreen = () => {
         fetchAlerts(0, true, '');
     };
 
-    const handleProductPress = async (product) => {
-        // Check if user is premium - bypass everything
+    const handleProductPress = (product) => {
+        if (!product) return;
+
+        // Check if user is premium
         if (userIsPremium) {
             navigation.navigate('ProductDetail', { product });
             return;
         }
 
-        // Free user - show paywall
-        console.log('[NAV] HomeScreen -> PremiumPaywall (Free User Redirect)');
+        // Free user redirect
         navigation.navigate('PremiumPaywall');
     };
 
@@ -514,6 +515,13 @@ const HomeScreen = () => {
                             style={styles.cardImage}
                             onError={() => setImageError(true)}
                         />
+                        {/* Fallback Label if remote image fails to load */}
+                        {imageError && (
+                            <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textSecondary }}>HollowScan</Text>
+                                <Text style={{ fontSize: 10, color: colors.textSecondary, opacity: 0.5 }}>Image Pending</Text>
+                            </View>
+                        )}
                         {/* PREMIUM DISCOUNT BADGE WITH GRADIENT */}
                         {hasDiscount && (
                             <LinearGradient
