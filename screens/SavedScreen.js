@@ -5,6 +5,7 @@ import { SavedContext } from '../context/SavedContext';
 import { UserContext } from '../context/UserContext';
 import Constants from '../Constants';
 import { formatPriceDisplay } from '../utils/format';
+import { FALLBACK_IMAGE_URL } from '../constants/Assets';
 
 const SavedScreen = ({ navigation }) => {
     const { savedProducts } = useContext(SavedContext);
@@ -51,7 +52,7 @@ const SavedScreen = ({ navigation }) => {
             ? { uri: data.image } 
             : (data.thumbnail && !imageError) 
                 ? { uri: data.thumbnail } 
-                : require('../assets/no_image.png');
+                : { uri: FALLBACK_IMAGE_URL };
 
         return (
             <TouchableOpacity

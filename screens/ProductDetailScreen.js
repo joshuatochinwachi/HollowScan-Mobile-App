@@ -6,6 +6,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SavedContext } from '../context/SavedContext';
 import { UserContext } from '../context/UserContext';
+import { FALLBACK_IMAGE_URL } from '../constants/Assets';
 import { formatPriceDisplay } from '../utils/format';
 import Constants from '../Constants';
 
@@ -297,7 +298,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         ? { uri: data.image } 
         : (data.thumbnail && !imageError) 
             ? { uri: data.thumbnail } 
-            : require('../assets/no_image.png');
+            : { uri: FALLBACK_IMAGE_URL };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>

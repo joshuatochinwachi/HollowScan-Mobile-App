@@ -23,6 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Constants from '../Constants';
+import { FALLBACK_IMAGE_URL } from '../constants/Assets';
 import { SavedContext } from '../context/SavedContext';
 import { UserContext } from '../context/UserContext';
 import LiveProductService from '../services/LiveProductService';
@@ -463,10 +464,11 @@ const HomeScreen = () => {
 
         if (!hasImage && !hasLinks && !hasAnyPrice) return null;
 
-        // Intelligent Image Handling
-        const imageSource = (data.image && !imageError) 
-            ? { uri: data.image } 
-            : require('../assets/no_image.png');
+        const imageSource = (data.image && !imageError)
+        ? { uri: data.image }
+        : (data.thumbnail && !imageError)
+            ? { uri: data.thumbnail }
+            : { uri: FALLBACK_IMAGE_URL };
 
         // Calculate ROI percentage (MATH SAFETY CHECK)
         const roiPercent = (hasResell && Number.isFinite(priceVal) && priceVal > 0)
