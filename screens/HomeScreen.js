@@ -441,6 +441,13 @@ const HomeScreen = () => {
 
     // --- ANIMATED PRODUCT CARD COMPONENT ---
     const ProductCard = ({ item }) => {
+        const [imageError, setImageError] = useState(false);
+
+        // Reset error state when item changes (crucial for FlatList recycling)
+        useEffect(() => {
+            setImageError(false);
+        }, [item.id]);
+
         const data = item.product_data || {};
         const catName = item.category_name || 'General';
         const { price: priceVal, wasPrice: wasPriceVal, resell: resellVal, discountPercent } = parsePriceData(data, item.region);
@@ -455,6 +462,11 @@ const HomeScreen = () => {
         const hasAnyPrice = priceVal > 0 || resellVal > 0 || wasPriceVal > 0;
 
         if (!hasImage && !hasLinks && !hasAnyPrice) return null;
+
+        // Intelligent Image Handling
+        const imageSource = (data.image && !imageError) 
+            ? { uri: data.image } 
+            : require('../assets/no-image.png');
 
         // Calculate ROI percentage (MATH SAFETY CHECK)
         const roiPercent = (hasResell && Number.isFinite(priceVal) && priceVal > 0)
@@ -496,8 +508,9 @@ const HomeScreen = () => {
                     {/* IMAGE SECTION */}
                     <View style={styles.cardImageContainer}>
                         <Image
-                            source={{ uri: data.image || 'https://via.placeholder.com/400' }}
+                            source={imageSource}
                             style={styles.cardImage}
+                            onError={() => setImageError(true)}
                         />
                         {/* PREMIUM DISCOUNT BADGE WITH GRADIENT */}
                         {hasDiscount && (

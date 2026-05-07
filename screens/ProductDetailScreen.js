@@ -286,6 +286,19 @@ const ProductDetailScreen = ({ route, navigation }) => {
         return !d.is_redundant && !label.includes('price') && !label.includes('pricing');
     }) : [];
 
+    const [imageError, setImageError] = useState(false);
+
+    // Reset error state when product changes (crucial for deep-link navigation)
+    useEffect(() => {
+        setImageError(false);
+    }, [product?.id]);
+
+    const imageSource = (data.image && !imageError) 
+        ? { uri: data.image } 
+        : (data.thumbnail && !imageError) 
+            ? { uri: data.thumbnail } 
+            : require('../assets/no-image.png');
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
             {copiedLabel ? (
@@ -307,7 +320,12 @@ const ProductDetailScreen = ({ route, navigation }) => {
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 {/* IMAGE HERO */}
                 <View style={[styles.imageContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <Image source={{ uri: data.image || data.thumbnail || 'https://via.placeholder.com/300' }} style={styles.image} resizeMode="contain" />
+                    <Image 
+                        source={imageSource} 
+                        style={styles.image} 
+                        resizeMode="contain" 
+                        onError={() => setImageError(true)}
+                    />
                     <TouchableOpacity
                         style={[styles.saveBtn, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.8)' }]}
                         onPress={() => toggleSave(product)}

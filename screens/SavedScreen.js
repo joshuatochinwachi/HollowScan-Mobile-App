@@ -36,17 +36,34 @@ const SavedScreen = ({ navigation }) => {
         navigation.navigate('ProductDetail', { product: item });
     };
 
-    const renderItem = ({ item }) => {
+    const SavedProductCard = ({ item }) => {
+        const [imageError, setImageError] = React.useState(false);
+
+        // Reset error state when item changes (crucial for FlatList recycling)
+        React.useEffect(() => {
+            setImageError(false);
+        }, [item.id]);
+
         const data = item.product_data || {};
         const displayPrice = formatPriceDisplay(data.price, item.region);
+
+        const imageSource = (data.image && !imageError) 
+            ? { uri: data.image } 
+            : (data.thumbnail && !imageError) 
+                ? { uri: data.thumbnail } 
+                : require('../assets/no-image.png');
 
         return (
             <TouchableOpacity
                 style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => handleProductPress(item)}
             >
-
-                <Image source={{ uri: data.image || data.thumbnail || 'https://via.placeholder.com/150' }} style={styles.image} />
+                <Image 
+                    source={imageSource} 
+                    style={styles.image} 
+                    resizeMode="contain"
+                    onError={() => setImageError(true)}
+                />
                 <View style={styles.cardContent}>
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{data.title}</Text>
                     <View style={styles.priceRow}>
@@ -57,6 +74,8 @@ const SavedScreen = ({ navigation }) => {
             </TouchableOpacity>
         );
     };
+
+    const renderItem = ({ item }) => <SavedProductCard item={item} />;
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>
