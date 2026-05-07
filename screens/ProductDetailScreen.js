@@ -60,11 +60,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
         setImageError(false);
     }, [product?.id]);
 
-    // Safety Guard: Early return for UI only
-    if (!product) return null;
-
-
-
     const colors = isDarkMode ? {
         bg: brand.DARK_BG,
         card: '#1C1C1E',
@@ -93,8 +88,6 @@ const ProductDetailScreen = ({ route, navigation }) => {
         profitCard: '#FFFFFF'
     };
 
-
-
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
@@ -104,13 +97,8 @@ const ProductDetailScreen = ({ route, navigation }) => {
         );
     }
 
-    if (!product) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Text>Loading product...</Text>
-            </View>
-        );
-    }
+    // Safety Guard: Early return for UI only
+    if (!product) return null;
 
 
 
