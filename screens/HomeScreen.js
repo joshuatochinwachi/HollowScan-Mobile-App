@@ -465,9 +465,19 @@ const HomeScreen = () => {
 
         if (!hasImage && !hasLinks && !hasAnyPrice) return null;
 
-        const imageSource = (data.image && !imageError)
+        const isPlaceholder = (url) => {
+            if (!url) return true;
+            const lowUrl = url.toLowerCase();
+            return lowUrl.includes('placeholder') || lowUrl.includes('noimage') || lowUrl.includes('notfound') || 
+                   lowUrl.includes('comingsoon') || lowUrl.includes('coming-soon') || lowUrl.includes('default') || 
+                   lowUrl.includes('blank') || lowUrl.includes('missing') || lowUrl.includes('unavailable') || 
+                   lowUrl.includes('error') || lowUrl.includes('no-photo') || lowUrl.includes('image-not-available') ||
+                   lowUrl.includes('blur') || lowUrl.includes('teaser') || lowUrl.includes('pixel');
+        };
+
+        const imageSource = (data.image && !imageError && !isPlaceholder(data.image))
         ? { uri: data.image }
-        : (data.thumbnail && !imageError)
+        : (data.thumbnail && !imageError && !isPlaceholder(data.thumbnail))
             ? { uri: data.thumbnail }
             : { uri: FALLBACK_IMAGE_URL };
 
