@@ -96,6 +96,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
+- **[Product Image Architecture](./PRODUCT_IMAGE_ARCHITECTURE.md)**: The professional "Zero-Failure" remote-asset strategy and self-healing image engine.
 - **[Backend Schema Integration](./BACKEND_SCHEMA_INTEGRATION.md)**: Mapping mobile attributes to Supabase JSONB fields.
 
 ### 🚀 Production & Deployment
