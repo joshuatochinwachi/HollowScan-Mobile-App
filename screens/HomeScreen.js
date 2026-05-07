@@ -466,7 +466,7 @@ const HomeScreen = () => {
         // Intelligent Image Handling
         const imageSource = (data.image && !imageError) 
             ? { uri: data.image } 
-            : require('../assets/no-image.png');
+            : require('../assets/no_image.png');
 
         // Calculate ROI percentage (MATH SAFETY CHECK)
         const roiPercent = (hasResell && Number.isFinite(priceVal) && priceVal > 0)

@@ -297,7 +297,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
         ? { uri: data.image } 
         : (data.thumbnail && !imageError) 
             ? { uri: data.thumbnail } 
-            : require('../assets/no-image.png');
+            : require('../assets/no_image.png');
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]} edges={['top']}>

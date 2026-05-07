@@ -51,7 +51,7 @@ const SavedScreen = ({ navigation }) => {
             ? { uri: data.image } 
             : (data.thumbnail && !imageError) 
                 ? { uri: data.thumbnail } 
-                : require('../assets/no-image.png');
+                : require('../assets/no_image.png');
 
         return (
             <TouchableOpacity
