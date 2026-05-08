@@ -28,7 +28,7 @@ graph TD
         PA --> |Raw Data| DB[(Supabase Persistence)]
         API[FastAPI Gateway] <--> DB
         API --> ROI[ROI Enrichment Engine]
-        API --> IMG[High-Res Hijacking Engine]
+        API --> IMG[High-Res Hijacking & Smart Filter Engine]
     end
 
     %% LAYER 3: PERSISTENCE & CACHING
@@ -65,6 +65,7 @@ To bypass the most advanced Discord bot detection:
     - **Sidebar Interaction**: The scraper mimics a human by interacting with server icons and channel names in the sidebar rather than direct URL navigation.
     - **AI AFK Logic**: Simulated "Idle Breaks" and AFK states (3-10 minutes) prevent the account from exhibiting 24/7 robotic activity patterns.
 - **Resolution Hijacking**: Bypassing retailer resolution limits (Amazon/eBay) by stripping size-limiting URL parameters (`.SL160.`, `.s-l300.`), delivering 4K product visuals.
+- **Smart Filtering**: The mobile app implements a secondary frontend "Quality Guard" that rejects Base64 blurry placeholders and enforces a minimum physical resolution check (rejecting images < 60px).
 
 ### 3.3 Real-time Monitoring & Dashboard
 A dedicated **Discord Stealth Dashboard** (Flask + SocketIO) on the Contabo VPS provides:
@@ -117,7 +118,8 @@ The HollowScan Telegram Bot (`telegram_bot.py`) is a high-fidelity alternative d
 
 ### 7.1 High-Resolution Image Transformation
 To ensure users see professional-grade product visuals, the bot implements a **Source-Level Hijacking Pipeline**:
-- **URL Optimization**: Using regular expressions to strip size-limiting tags (e.g., Amazon’s `._SL160_`, eBay’s `s-l300`) from raw ingestion URLs, forcing servers to deliver maximum resolution assets (1200px+).
+- **Resolution Forcing**: Using regular expressions to strip size-limiting tags (e.g., Amazon’s `._SL160_`, eBay’s `s-l300`) from raw ingestion URLs, forcing servers to deliver maximum resolution assets (1200px+).
+- **Quality Guard**: Shared filtering logic ensures the bot blocks Base64 blurry placeholders and microscopic artifacts, maintaining visual standards across all platforms.
 - **Metadata Scraping**: If direct images are restricted, the bot utilizes `BeautifulSoup4` and a randomized User-Agent rotation to crawl the source page for original `og:image` and JSON-LD structured data.
 - **On-the-Fly Processing**: Images are processed via `Pillow (PIL)` to ensure compatibility across all Telegram client versions while preserving maximum clarity.
 

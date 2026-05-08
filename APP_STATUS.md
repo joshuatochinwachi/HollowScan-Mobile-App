@@ -12,6 +12,11 @@
 - [x] Exact-match category filtering
 - [x] URL encoding for category names with spaces
 - [x] Debug logging with `[CATEGORIES]` and `[FETCH]` tags
+- [x] **Smart Image Engine (Resilience)** ⭐ NEW
+  - [x] Base64 Blocking (Eliminates blurry gradients)
+  - [x] Physical Dimension Guard (Rejects images < 60px)
+  - [x] Keyword Sanitization (Allows Nike/genuine brands while blocking junk)
+  - [x] Zero-Failure Fallback (Remote GitHub assets)
 
 ### ProductDetailScreen
 - [x] Hero image with gradient overlay

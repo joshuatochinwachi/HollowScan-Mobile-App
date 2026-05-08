@@ -96,7 +96,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
 - **[Subscription Account Logic](./SUBSCRIPTION_ACCOUNT_LOGIC.md)**: The "Brain" behind cross-platform premium portability.
-- **[Product Image Architecture](./PRODUCT_IMAGE_ARCHITECTURE.md)**: The professional "Zero-Failure" remote-asset strategy and self-healing image engine.
+- **[Product Image Architecture](./PRODUCT_IMAGE_ARCHITECTURE.md)**: The professional "Zero-Failure" Smart Image Engine, featuring Base64 blocking and physical dimension enforcement.
 - **[Backend Schema Integration](./BACKEND_SCHEMA_INTEGRATION.md)**: Mapping mobile attributes to Supabase JSONB fields.
 
 ### 🚀 Production & Deployment
@@ -238,9 +238,10 @@ Every product extracted from raw Discord JSONB is processed for profitability:
 - **Formula**: `(Resell Price - Store Price) / Store Price * 100`
 - **Normalization**: Handles currency detection (USD/GBP/CAD) to provide a unified ROI percentage across all feed cards.
 
-### 2. High-Fidelity Image Hijacking
-The system bypasses retailer resolution limits to maintain a professional UI:
+### 2. High-Fidelity Image Hijacking & Smart Filtering
+The system ensures a professional UI by bypassing retailer limits and filtering junk media:
 - **URL Transformation**: Strips Amazon's `.SL160.` and eBay's `.s-l300.` tags, forcing source servers to deliver maximum 1200px+ resolution assets.
+- **Smart Image Engine**: Implemented a frontend-driven "Smart Filter" that blocks Base64 blurry placeholders and enforces a minimum physical resolution check (rejecting images < 60px).
 - **JSON-LD Crawling**: Falls back to original page metadata if image proxies are restricted.
 - **Deduplication Signatures**: Every deal is hashed via a `content_signature` to ensure the feed remains clean and free of duplicate restock alerts.
 
@@ -507,9 +508,10 @@ stateDiagram-v2
 
 The Telegram Bot isn't just a utility—it's a secondary, high-performance Discovery Hub designed for users who prioritize real-time speed and ultra-clear visuals over a native UI.
 
-### 1. High-Res Image Hijacking Engine
+### 1. High-Fidelity Image Hijacking & Smart Filtering
 The bot ensures users see crystalline product images even when source embeds are low quality.
 - **Resolution Forcing**: Strips Amazon's `._SL160_` and eBay's `s-l300` tags from raw ingestion strings, forcing source servers to deliver maximum resolution assets (1200px+).
+- **Quality Guard**: Shared logic with the mobile app to block Base64 blurry placeholders and tiny physical artifacts.
 - **Metadata Scraping**: If images are restricted, the bot uses `BeautifulSoup4` to crawl original `og:image` and JSON-LD paths directly from the retailer.
 
 ### 2. Intelligent Link Analytics & ROI
