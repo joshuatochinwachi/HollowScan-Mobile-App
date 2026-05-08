@@ -283,12 +283,20 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
     const isPlaceholder = (url) => {
         if (!url) return true;
+        
+        // 🚨 BLOCK INLINE BASE64 IMAGES (These are the blurry gradients)
+        if (url.startsWith('data:image')) return true;
+
         const lowUrl = url.toLowerCase();
-        return lowUrl.includes('placeholder') || lowUrl.includes('noimage') || lowUrl.includes('notfound') || 
-               lowUrl.includes('comingsoon') || lowUrl.includes('coming-soon') || lowUrl.includes('default') || 
-               lowUrl.includes('blank') || lowUrl.includes('missing') || lowUrl.includes('unavailable') || 
-               lowUrl.includes('error') || lowUrl.includes('no-photo') || lowUrl.includes('image-not-available') ||
-               lowUrl.includes('blur') || lowUrl.includes('teaser') || lowUrl.includes('pixel');
+        return lowUrl.includes('placeholder') || 
+               lowUrl.includes('noimage') || 
+               lowUrl.includes('no-image') || 
+               lowUrl.includes('notfound') || 
+               lowUrl.includes('comingsoon') || 
+               lowUrl.includes('coming-soon') || 
+               lowUrl.includes('unavailable') || 
+               lowUrl.includes('no-photo') || 
+               lowUrl.includes('image-not-available');
     };
 
     const imageSource = (data.image && !imageError && !isPlaceholder(data.image)) 
@@ -323,6 +331,13 @@ const ProductDetailScreen = ({ route, navigation }) => {
                         style={styles.image} 
                         resizeMode="contain" 
                         onError={() => setImageError(true)}
+                        onLoad={(e) => {
+                            const { width, height } = e.nativeEvent.source;
+                            // 🚨 PERMANENT FIX: If the physical image is tiny (like a 10x10 blur placeholder), reject it
+                            if (width && height && (width < 60 || height < 60)) {
+                                setImageError(true);
+                            }
+                        }}
                     />
                     
                     {/* Fallback Label if remote image fails to load */}
