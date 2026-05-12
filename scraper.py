@@ -459,11 +459,37 @@ async def take_long_sleep():
     log(f"⏰ Waking up from long sleep")
 
 async def dismiss_discord_modals(page):
-    """Dismiss any Discord overlay modals by pressing Escape"""
+    """Dismiss any Discord overlay modals (Nitro promos, announcements, etc.)"""
     try:
+        # Common selectors for Discord close buttons and modal layers
+        dismiss_selectors = [
+            'button[aria-label="Close"]',
+            'button[aria-label="Dismiss"]',
+            '[class*="closeButton"]',
+            '[class*="layerContainer"] button[aria-label="Close"]',
+            '[class*="premiumPromo"] button',
+            '[class*="nitroModal"] button',
+            'button:has-text("Maybe later")',
+            'button:has-text("Not now")'
+        ]
+        
+        dismissed = False
+        for selector in dismiss_selectors:
+            try:
+                btn = page.locator(selector).first
+                if await btn.count() > 0 and await btn.is_visible():
+                    log(f"   🚫 Dismissing modal via selector: {selector}")
+                    await btn.click()
+                    dismissed = True
+                    await asyncio.sleep(0.8)
+            except:
+                continue
+        
+        # Always try Escape key as a fallback (Discord usually responds to this)
         await page.keyboard.press('Escape')
-        await asyncio.sleep(0.5)
-    except:
+        if dismissed:
+            await asyncio.sleep(0.5)
+    except Exception:
         pass
 
 async def navigate_to_channel(page, channel_url):
@@ -1391,6 +1417,7 @@ async def async_archiver_logic():
                                     supabase_utils.upload_file(state_path, SUPABASE_BUCKET, remote_state_path, debug=False)
                                     log("✅ Login success!")
                                     await smart_delay(3, 7)
+                                    await dismiss_discord_modals(page)
                                     break
                                 
                                 await asyncio.sleep(5)
@@ -1447,6 +1474,7 @@ async def async_archiver_logic():
                             
                             try:
                                 # Always use click navigation (fallback to URL only if click fails)
+                                await dismiss_discord_modals(page)  # Clear modals before navigation
                                 await navigate_to_channel(page, channel_url)
                                 await dismiss_discord_modals(page)  # Dismiss any overlay modals (e.g. Nitro promos)
                                 await smart_delay(2, 5)
