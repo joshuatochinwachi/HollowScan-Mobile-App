@@ -458,10 +458,33 @@ async def take_long_sleep():
     set_status("RUNNING")
     log(f"⏰ Waking up from long sleep")
 
-async def dismiss_discord_modals(page):
-    """Dismiss any Discord overlay modals (Nitro promos, announcements, etc.)"""
+async def handle_manual_inputs(page):
+    """Process any manual inputs (clicks, typing) from the dashboard queue"""
     try:
-        # Common selectors for Discord close buttons and modal layers
+        while not input_queue.empty():
+            act = input_queue.get_nowait()
+            vp = page.viewport_size
+            if not vp: continue
+            
+            if act['type'] == 'mousedown':
+                await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
+                await page.mouse.down()
+            elif act['type'] == 'mousemove':
+                await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
+            elif act['type'] == 'mouseup':
+                await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
+                await page.mouse.up()
+            elif act['type'] == 'keypress':
+                await page.keyboard.press(act['key'])
+            elif act['type'] == 'click':
+                await page.mouse.click(act['x'] * vp['width'], act['y'] * vp['height'])
+    except Exception:
+        pass
+
+async def dismiss_discord_modals(page):
+    """Dismiss any Discord overlay modals with force-click and retries"""
+    await asyncio.sleep(1.5) # Give modal time to appear
+    try:
         dismiss_selectors = [
             'button[aria-label="Close"]',
             'button[aria-label="Dismiss"]',
@@ -473,22 +496,19 @@ async def dismiss_discord_modals(page):
             'button:has-text("Not now")'
         ]
         
-        dismissed = False
         for selector in dismiss_selectors:
             try:
                 btn = page.locator(selector).first
-                if await btn.count() > 0 and await btn.is_visible():
-                    log(f"   🚫 Dismissing modal via selector: {selector}")
-                    await btn.click()
-                    dismissed = True
-                    await asyncio.sleep(0.8)
+                if await btn.count() > 0:
+                    log(f"   🚫 Attempting to dismiss modal: {selector}")
+                    # Use force=True because modals often have "un-clickable" transparent layers
+                    await btn.click(force=True, timeout=2000)
+                    log(f"   ✅ Modal dismissed")
+                    await asyncio.sleep(0.5)
             except:
                 continue
         
-        # Always try Escape key as a fallback (Discord usually responds to this)
         await page.keyboard.press('Escape')
-        if dismissed:
-            await asyncio.sleep(0.5)
     except Exception:
         pass
 
@@ -1380,37 +1400,7 @@ async def async_archiver_logic():
                                     socketio.emit('screenshot', base64.b64encode(scr).decode('utf-8'))
                                 except: pass
                                 
-                                try:
-                                    while not input_queue.empty():
-                                        act = input_queue.get_nowait()
-                                        if act['type'] == 'click':
-                                            vp = page.viewport_size
-                                            # Realistic click offset
-                                            x_jitter = random.gauss(0, 3)
-                                            y_jitter = random.gauss(0, 3)
-                                            x = (act['x'] * vp['width']) + x_jitter
-                                            y = (act['y'] * vp['height']) + y_jitter
-                                            
-                                            # Simulate human click (press + delay + release)
-                                            await page.mouse.move(x, y)
-                                            await asyncio.sleep(random.uniform(0.05, 0.15))
-                                            await page.mouse.down()
-                                            await asyncio.sleep(random.uniform(0.05, 0.12))
-                                            await page.mouse.up()
-                                        elif act['type'] == 'mousedown':
-                                            vp = page.viewport_size
-                                            await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
-                                            await page.mouse.down()
-                                        elif act['type'] == 'mousemove':
-                                            vp = page.viewport_size
-                                            await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
-                                        elif act['type'] == 'mouseup':
-                                            vp = page.viewport_size
-                                            await page.mouse.move(act['x'] * vp['width'], act['y'] * vp['height'])
-                                            await page.mouse.up()
-                                        elif act['type'] == 'keypress':
-                                            await page.keyboard.press(act['key'])
-                                except: pass
+                                await handle_manual_inputs(page)
                                 
                                 if "discord.com/channels" in page.url and "/login" not in page.url:
                                     await context.storage_state(path=state_path)
@@ -1474,8 +1464,10 @@ async def async_archiver_logic():
                             
                             try:
                                 # Always use click navigation (fallback to URL only if click fails)
+                                await handle_manual_inputs(page)
                                 await dismiss_discord_modals(page)  # Clear modals before navigation
                                 await navigate_to_channel(page, channel_url)
+                                await handle_manual_inputs(page)
                                 await dismiss_discord_modals(page)  # Dismiss any overlay modals (e.g. Nitro promos)
                                 await smart_delay(2, 5)
                                 
