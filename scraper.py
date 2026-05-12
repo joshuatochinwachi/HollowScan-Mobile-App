@@ -458,6 +458,14 @@ async def take_long_sleep():
     set_status("RUNNING")
     log(f"⏰ Waking up from long sleep")
 
+async def dismiss_discord_modals(page):
+    """Dismiss any Discord overlay modals by pressing Escape"""
+    try:
+        await page.keyboard.press('Escape')
+        await asyncio.sleep(0.5)
+    except:
+        pass
+
 async def navigate_to_channel(page, channel_url):
     """
     Navigate to a channel by clicking (human-like) or fallback to direct URL.
@@ -1440,6 +1448,7 @@ async def async_archiver_logic():
                             try:
                                 # Always use click navigation (fallback to URL only if click fails)
                                 await navigate_to_channel(page, channel_url)
+                                await dismiss_discord_modals(page)  # Dismiss any overlay modals (e.g. Nitro promos)
                                 await smart_delay(2, 5)
                                 
                                 # Human behavior simulation
