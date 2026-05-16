@@ -91,7 +91,7 @@ HollowScan is a massive ecosystem. Use these authoritative guides for deep techn
 ### 🏛️ System Design & Architecture
 - **[System Architecture Blueprint](./SYSTEM_ARCHITECTURE.md)**: Structural topology, networking, and DevOps pipelines.
 - **[System Design Specification](./SYSTEM_DESIGN_SPECIFICATION.md)**: The elite technical bible for theory, state machines, and logic.
-- **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services.
+- **[Concurrency & Architectural Breakdown](./hollowscan_concurrency_breakdown.md)**: Deep dive into the Async, Sync, and Multithreading patterns across all services. Also, check out the [concurrency breakdown of Pokemon Center Monitor](https://github.com/joshuatochinwachi/Pokemon-Center-Monitor-MicroService/blob/main/concurrency_analysis.md).
 - **[Pokémon Center Monitor Architecture](./POKEMON_CENTER_MONITOR_ARCHITECTURE.md)**: The "Elite" technical overview—covering Imperva evasion, State-Aware Persistent Watchdog override, and the Power Hour bandwidth-saver engine.
 - **[Grand Architecture Diagram](./ARCHITECTURE_DIAGRAM.md)**: Deep dive into the global system flow.
 - **[Subscription Architecture](./SUBSCRIPTION_ARCHITECTURE.md)**: Technical breakdown of the payment logic.
