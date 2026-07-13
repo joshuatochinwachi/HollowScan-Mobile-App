@@ -152,6 +152,21 @@ Security and signing are handled through an automated "Secrets Reconstitution" f
 
 ---
 
-## 9. Scalability Roadmap
+## 9. The Unified Product Space: HS Hub
+The **HS Hub** (`https://github.com/joshuatochinwachi/HS-Hub`) is an industrial-grade cinematic scrollytelling portal that unifies three primary products: **YieldSage** (DeFi yield intelligence), **HollowScan** (retail arbitrage), and **Polymarket Trading Bot** under a single interactive workspace.
+
+### 9.1 High-Performance Scroll Scrubbing
+- **HTML5 Canvas Rendering**: Tied directly to scroll progress using Framer Motion's `useSpring` physics engine (`stiffness: 50`, `damping: 20`) and `requestAnimationFrame`.
+- **Flicker-Free Fallback**: An algorithm that searches backward for the nearest loaded frame when scrubbing velocity exceeds network speed, preventing black flashes.
+
+### 9.2 Orbiting Constellation Mouse Aura
+- **Lag Parallax**: Uses desynchronized lerp weights (`0.035`, `0.022`, `0.014`) to drift Green, Orange, and Blue light orbs toward the cursor. This provides a deep, multi-dimensional visual layout representing the three unified projects.
+
+### 9.3 Local Image Sync API
+- **Local Ingest Gate**: Exposes `/api/copy-images` and `/api/product-img` routers to replicate actual scanned product assets directly from IDE storage into the portal's public folder during development testing.
+
+---
+
+## 10. Scalability Roadmap
 - **Sharding**: Future partitioning of `alerts` table by `country_code` for faster region-specific discovery.
 - **AI Scoring**: Predictive model to score deal "sell-out" velocity based on ingestion patterns.

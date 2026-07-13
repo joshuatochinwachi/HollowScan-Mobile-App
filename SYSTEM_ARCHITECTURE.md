@@ -19,6 +19,7 @@ graph TD
         MA[React Native: iOS/Android]
         TG[Telegram Bot: python-telegram-bot]
         ADM[Admin Dashboard: React + Vite]
+        HHub[HS Hub Portal: Next.js]
     end
 
     %% NETWORKING
@@ -28,6 +29,7 @@ graph TD
         MA --> DNS
         TG --> DNS
         ADM --> DNS
+        HHub --> DNS
         DNS --> LB
     end
 
@@ -160,5 +162,6 @@ graph LR
 | **Scraper → Admin** | SocketIO | Image/Logs | Live Stealth View for human monitoring. |
 | **API → Expo** | HTTP / POST | JSON | Real-time push notification dispatch. |
 | **Stripe → Bot** | Webhook | JSON | Subscription renewal handling. |
+| **HS Hub (Web) → User** | HTTPS / HTML | Web Assets | Cinematic scrollytelling portal explaining the YieldSage, HollowScan, and prediction bot workspace. |
 
 ---

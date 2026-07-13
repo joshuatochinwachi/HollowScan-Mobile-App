@@ -16,7 +16,7 @@ HollowScan is an industrial-grade arbitrage pipeline designed for high-concurren
 > - For the structural blueprint and infrastructure topology (CORS, DevOps, Supabase Edge), see the [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md).
 
 ### 🔗 Repository Ecosystem
-[HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape) || [HollowScan/RonHub Raffle Github](https://github.com/joshuatochinwachi/RonHub-Raffle) || [PC Queue Monitor Microservice Github](https://github.com/joshuatochinwachi/Pokemon-Center-Monitor-MicroService)
+[HollowScan (Official Website) Github](https://github.com/joshuatochinwachi/HollowScan-Official-Website) || [Backend (FastAPI) Github](https://github.com/joshuatochinwachi/HollowScan-Fast-API-Backend) || [Telegram Bot & Scraper Github](https://github.com/joshuatochinwachi/dc_scrape) || [HollowScan/RonHub Raffle Github](https://github.com/joshuatochinwachi/RonHub-Raffle) || [PC Queue Monitor Microservice Github](https://github.com/joshuatochinwachi/Pokemon-Center-Monitor-MicroService) || [HS Hub (Product Portal) Github](https://github.com/joshuatochinwachi/HS-Hub)
 
 ### ⚙️ Backend & Ingestion (Infrastructure)
 - **Engine**: FastAPI (Async Performance Optimized).
@@ -295,7 +295,19 @@ hollowscan_backend/ (External Repo)
 ├── scraper.py                       # THE ARCHIVER: Playwright Stealth Engine
 ├── supabase_utils.py                # Database & Storage Abstraction
 ├── cache_utils.py                   # Singleflight & Redis management
-└── admin_dashboard/                 # React-based hollowControl GUI
+```
+
+### 🎬 Product Unified Space (HS Hub)
+A cinematic scrollytelling workspace portal that unifies YieldSage (DeFi yield intelligence), HollowScan (retail arbitrage), and Polymarket Trading Bot under a single cohesive space.
+
+```text
+HS-Hub/ (External Repo - https://github.com/joshuatochinwachi/HS-Hub)
+├── app/                             # Next.js App Router (Globals, Layout, Page)
+├── components/                      # Framer Motion & Canvas Scrollytelling components
+│   ├── scroll-canvas.tsx            # High-performance frame-by-frame JPEG canvas scrub
+│   ├── scrollytelling-section.tsx   # Spring-smoothed narrative overlays & CTA portals
+│   └── hs-hub-mouse-aura.tsx        # Slow-lerp multi-product interactive constellation
+└── public/                          # Media assets (videos/demo, scroll frame sequences)
 ```
 
 > [!NOTE]

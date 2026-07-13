@@ -350,6 +350,39 @@ const colors = isDarkMode ? { ... } : { ... };
 
 ---
 
+## 🌐 External Ecosystem: HS Hub Portal
+The **HS Hub** (`https://github.com/joshuatochinwachi/HS-Hub`) is an external Next.js 16 / React 19 scrollytelling web dashboard and portal designed to showcase the unified ecosystem (YieldSage DeFi, HollowScan Retail, and the Polymarket trading bot).
+
+### 📁 HS Hub File Structure
+```
+HS-Hub/
+├── app/                             # Next.js App Router topology
+│   ├── globals.css                  # Style tokens & luxury fintech aesthetics
+│   ├── layout.tsx                   # Font configurations & smooth scroll wrappers
+│   ├── icon.tsx                     # Dynamic SVG-based canvas favicon
+│   ├── page.tsx                     # Main interactive portal landing page
+│   ├── privacy-policy/              # Scroll-linked privacy policy display
+│   └── api/
+│       ├── copy-images/             # Dev utility route to synchronize local images
+│       └── product-img/             # Dynamic proxy route serving local product frames
+├── components/                      # High-fidelity custom React components
+│   ├── scroll-canvas.tsx            # HTML5 Canvas scrolling image sequence player
+│   ├── scrollytelling-section.tsx   # Spring-smoothed overlays & text portals
+│   ├── hs-hub-mouse-aura.tsx        # Slow-lerp multi-product mouse lighting constellation
+│   └── loading-screen.tsx           # character-scramble preload screen
+└── public/                          # Media assets (videos/demo, scroll frame sequences)
+```
+
+### 🎬 Key Interactive Components
+
+#### 1. ScrollCanvas (`components/scroll-canvas.tsx`)
+Renders raw frame-by-frame JPEG sequences directly to an HTML5 `<canvas>` synced with scroll speed. Features a sub-second back-search loop that falls back to the nearest loaded frame if scrubbing speed exceeds asset loading.
+
+#### 2. HsHubMouseAura (`components/hs-hub-mouse-aura.tsx`)
+A custom canvas mouse tracker featuring three light circles (Green for YieldSage, Orange for HollowScan, Blue for Polymarket). Each light circle follows the mouse with different inertia weights (`0.035`, `0.022`, `0.014`), creating a 3D parallax drift effect.
+
+---
+
 ## 📚 Resources
 
 - [React Native Docs](https://reactnative.dev)
