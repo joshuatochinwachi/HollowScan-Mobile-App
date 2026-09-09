@@ -31,6 +31,9 @@ import { setupNotificationHandler } from '../services/PushNotificationService';
 import { formatPriceDisplay } from '../utils/format';
 import AnnouncementBanner from '../components/AnnouncementBanner';
 import PCMonitorHub from '../components/PCMonitorHub';
+import PromoWidget from '../components/PromoWidget';
+import PromoSheet from '../components/PromoSheet';
+import { usePremiumPromo } from '../hooks/usePremiumPromo';
 
 const { width } = Dimensions.get('window');
 
@@ -83,6 +86,19 @@ const HomeScreen = () => {
 
     const [countdown, setCountdown] = useState(''); // Keep local if used for UI display in feed, but modal uses context
     const [announcement, setAnnouncement] = useState('');
+
+    const [hasCatalogLoaded, setHasCatalogLoaded] = useState(false);
+
+    const {
+        promoCode,
+        isWidgetVisible,
+        isSheetOpen,
+        justActivated,
+        isChecking: isPromoChecking,
+        openSheet: openPromoSheet,
+        closeSheet: closePromoSheet,
+        checkTelegramStatus: recheckPromoStatus
+    } = usePremiumPromo(hasCatalogLoaded);
 
 
 
@@ -273,6 +289,7 @@ const HomeScreen = () => {
         ]);
 
         setIsLoading(false);
+        setHasCatalogLoaded(true);
     };
 
     const fetchCategories = async () => {
@@ -804,7 +821,7 @@ const HomeScreen = () => {
                     removeClippedSubviews={Platform.OS === 'android'}
                     ListFooterComponent={() => {
                         if (isLoadingMore) return <ActivityIndicator color={brand.BLUE} style={{ marginVertical: 20 }} />;
-                        return <View style={{ height: 40 }} />;
+                        return <View style={{ height: 70 }} />;
                     }}
                     ListEmptyComponent={!isLoading ? (
                         <View style={styles.emptyContainer}>
@@ -891,6 +908,24 @@ const HomeScreen = () => {
             </Modal>
 
             {/* NO LOCAL DAILY LIMIT MODAL - Rendered globally in App.js */}
+
+            {/* FLOATING PROMO WIDGET & EXPANDABLE SHEET */}
+            <PromoWidget
+                isVisible={isWidgetVisible}
+                isPremium={userIsPremium}
+                onPress={openPromoSheet}
+            />
+
+            <PromoSheet
+                visible={isSheetOpen}
+                onClose={closePromoSheet}
+                telegramLinked={telegramLinked}
+                user={user}
+                promoCode={promoCode}
+                justActivated={justActivated}
+                isChecking={isPromoChecking}
+                onCheckStatus={recheckPromoStatus}
+            />
 
         </SafeAreaView >
     );
