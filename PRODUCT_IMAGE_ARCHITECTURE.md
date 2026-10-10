@@ -31,6 +31,33 @@ graph TD
     H --> K[Display Boss-Approved Fallback]
 ```
 
+After the small fix made on October 10th, 2026, the image architecture now includes a backup scraping system. If the app can't find an image, it will scrape the product page for an image and patch the database with the found image. This is done asynchronously so it doesn't block the UI. The admin can also manually trigger this system for a list of messages using the `/v1/admin/enrich-images` endpoint. This is really useful for links scraped from product pages like Smyths or Argos. If it finds a new image, it will update the database and the next time you pull down to refresh, you'll see the new image.   
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Discord as Discord Channel
+    participant Scraper as Scraper (Playwright)
+    participant TG as Telegram Bot
+    participant DB as Supabase (discord_messages)
+    participant API as Backend API (/v1/feed)
+    participant App as HollowScan Mobile App
+
+    Discord->>Scraper: New Drop (Lazy Image or No Image)
+    Scraper->>Scraper: Checks parent <a>, extracts title_url, scrapes og:image if needed
+    Scraper->>DB: Stores message with valid high-res image
+    DB->>TG: TG Bot processes drop
+    TG->>TG: Resolves high-res photo for alert
+    TG-->>DB: [NEW] Auto-syncs resolved image back to Supabase in background
+    App->>API: GET /v1/feed
+    API->>API: 8-Step Image Extraction & Validation
+    alt Image is still missing in DB
+        API->>DB: [NEW] Background task scrapes og:image via candidate URLs & patches DB
+    end
+    API->>App: Sends valid image URL
+    App->>App: Displays real product visual without fallback card
+```
+
 ## 2. Technical Implementation Details
 
 ### A. The "Smart Filter" Engine
