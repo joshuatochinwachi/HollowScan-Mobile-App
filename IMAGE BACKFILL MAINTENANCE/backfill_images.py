@@ -71,24 +71,59 @@ def is_valid_product_image(url: Optional[str]) -> bool:
     for bad in ["placeholder", "noimage", "no-image", "notfound", "comingsoon", "unavailable", "no-photo", "image-not-available"]:
         if bad in u_low:
             return False
+
+    # Block generic site fallbacks / icons that pass as og:image but are not product photos
+    junk_paths = [
+        "og_img_discord_home",
+        "assets/og_img",
+        "avatar-black.png",
+        "avatar-white.png",
+        "default-avatar",
+        "/assets/avatar",
+        "discord-mark-black",
+        "discord-mark-white",
+        "/s-l32.",
+        "/s-l48.",
+        "/s-l64.",
+        "/s-l96.",
+        "spinner",
+        "loading-placeholder",
+        "/blank.",
+        "1x1.png",
+        "1x1.gif",
+        "pixel.gif",
+        "pixel.png",
+        "spacer.gif",
+    ]
+    if any(jp in u_low for jp in junk_paths):
+        return False
+
     return True
 
 
 def optimize_image_url(url: str) -> str:
-    """Clean proxy and size limits from image URLs."""
+    """Clean proxy and size limits from image URLs without breaking signed/ephemeral CDN tokens."""
     if not url:
         return url
     try:
+        # Unwrap discord proxy URLs (where the actual image URL is encoded in the path)
         if "images-ext-" in url and "discordapp.net" in url:
             if "/https/" in url: url = "https://" + url.split("/https/", 1)[1]
             elif "/http/" in url: url = "http://" + url.split("/http/", 1)[1]
+
+        # Amazon full-res un-cropping
         if any(domain in url for domain in ['media-amazon.com', 'images-amazon.com', 'ssl-images-amazon.com']):
             url = re.sub(r'\._[A-Z_]+[0-9]+_\.', '.', url)
             if "?" in url: url = url.split("?")[0]
+
+        # eBay full-res upgrade
         if "ebayimg.com" in url:
             if re.search(r's-l\d+\.', url): url = re.sub(r's-l\d+\.', 's-l1600.', url)
             if "?" in url: url = url.split("?")[0]
-        if "discordapp.net" in url and "?" in url: url = url.split("?")[0]
+
+        # NOTE: Do NOT strip query params from discordapp.net / media.discordapp.net / cdn.discordapp.com.
+        # Discord attachments use signed query params (?ex=...&is=...&hm=...).
+        # Stripping them causes 403 Forbidden.
     except Exception:
         pass
     return url
