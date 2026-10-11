@@ -15,7 +15,7 @@ import sys
 import time
 import json
 import argparse
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from urllib.parse import urlparse, parse_qs
 import requests
 from dotenv import load_dotenv
@@ -108,8 +108,12 @@ def optimize_image_url(url: str) -> str:
     try:
         # Unwrap discord proxy URLs (where the actual image URL is encoded in the path)
         if "images-ext-" in url and "discordapp.net" in url:
-            if "/https/" in url: url = "https://" + url.split("/https/", 1)[1]
-            elif "/http/" in url: url = "http://" + url.split("/http/", 1)[1]
+            # ⚠️ DO NOT unwrap Vinted or signature-tokened URLs!
+            # Vinted's CDN rejects unwrapped links without tokens (HTTP 404).
+            # Discord's proxy caches and serves them cleanly with HTTP 200.
+            if "vinted" not in url.lower() and "%3fs%3d" not in url.lower():
+                if "/https/" in url: url = "https://" + url.split("/https/", 1)[1]
+                elif "/http/" in url: url = "http://" + url.split("/http/", 1)[1]
 
         # Amazon full-res un-cropping
         if any(domain in url for domain in ['media-amazon.com', 'images-amazon.com', 'ssl-images-amazon.com']):
@@ -149,12 +153,44 @@ def scrape_og_image(html_text: str) -> Optional[str]:
     return None
 
 
-def resolve_candidate_image(candidate_urls: List[str]) -> Optional[str]:
-    """Try candidate URLs in priority order and scrape product og:image."""
+# Failure reason constants (mirrors backend [IMAGE ENRICH] tags)
+REASON_INVALID_URL    = "INVALID_URL"
+REASON_SKIP_PATTERN   = "SKIP_PATTERN"
+REASON_HTTP_ERROR     = "HTTP_ERROR"
+REASON_NO_OG_TAG      = "NO_OG_TAG"
+REASON_INVALID_IMAGE  = "INVALID_IMAGE"
+REASON_EXCEPTION      = "EXCEPTION"
+REASON_ALL_EXHAUSTED  = "ALL_EXHAUSTED"
+
+
+def resolve_candidate_image(msg_id: Any, candidate_urls: List[str]) -> Tuple[Optional[str], str, List[str]]:
+    """
+    Try candidate URLs in priority order and scrape product og:image.
+
+    Returns:
+        (image_url_or_None, failure_reason, log_lines)
+        - image_url_or_None : the found image URL, or None on failure
+        - failure_reason    : one of the REASON_* constants (empty string on success)
+        - log_lines         : list of per-URL diagnostic strings to print
+    """
+    logs = []
+    attempted = []
+
+    if not candidate_urls:
+        logs.append(f"   [IMAGE ENRICH] SKIP {msg_id}: no candidate URLs provided")
+        return None, REASON_INVALID_URL, logs
+
+    last_reason = REASON_ALL_EXHAUSTED
+
     for raw_url in candidate_urls:
         if not raw_url or not isinstance(raw_url, str) or not raw_url.startswith("http"):
+            logs.append(f"   [IMAGE ENRICH] SKIP {msg_id}: invalid/empty URL -> {repr(raw_url)[:80]}")
+            last_reason = REASON_INVALID_URL
             continue
+
         if any(x in raw_url.lower() for x in SKIP_PATTERNS):
+            logs.append(f"   [IMAGE ENRICH] SKIP {msg_id}: URL matched skip pattern -> {raw_url[:80]}")
+            last_reason = REASON_SKIP_PATTERN
             continue
 
         clean_url = raw_url
@@ -170,18 +206,41 @@ def resolve_candidate_image(candidate_urls: List[str]) -> Optional[str]:
                 pass
 
         if any(x in clean_url.lower() for x in SKIP_PATTERNS):
+            logs.append(f"   [IMAGE ENRICH] SKIP {msg_id}: unwrapped URL matched skip pattern -> {clean_url[:80]}")
+            last_reason = REASON_SKIP_PATTERN
             continue
+
+        attempted.append(clean_url[:80])
 
         try:
             resp = requests.get(clean_url, headers=HEADERS_HTTP, timeout=8.0, allow_redirects=True)
-            if resp.status_code == 200:
-                found = scrape_og_image(resp.text)
-                if found and is_valid_product_image(found):
-                    return optimize_image_url(found)
+            if resp.status_code != 200:
+                logs.append(f"   [IMAGE ENRICH] HTTP {resp.status_code} for {msg_id} -> {clean_url[:80]}")
+                last_reason = REASON_HTTP_ERROR
+                continue
+
+            found = scrape_og_image(resp.text)
+            if not found:
+                logs.append(f"   [IMAGE ENRICH] NO OG TAG for {msg_id} -> {clean_url[:80]} (page len={len(resp.text)})")
+                last_reason = REASON_NO_OG_TAG
+                continue
+
+            if not is_valid_product_image(found):
+                logs.append(f"   [IMAGE ENRICH] INVALID IMAGE for {msg_id} -> scraped={found[:80]}")
+                last_reason = REASON_INVALID_IMAGE
+                continue
+
+            # SUCCESS
+            return optimize_image_url(found), "", logs
+
         except Exception as e:
+            logs.append(f"   [IMAGE ENRICH] EXCEPTION for {msg_id} / {clean_url[:50]}: {type(e).__name__}: {e}")
+            last_reason = REASON_EXCEPTION
             continue
 
-    return None
+    # All URLs exhausted
+    logs.append(f"   [IMAGE ENRICH] EXHAUSTED {msg_id}: tried {len(attempted)} URL(s) with no result -> {attempted}")
+    return None, last_reason, logs
 
 
 def patch_message_image(msg_id: Any, image_url: str, raw_data: Dict) -> bool:
@@ -229,10 +288,15 @@ def main():
     messages = resp.json()
     print(f"✅ Retrieved {len(messages)} messages. Scanning for missing images...\n")
 
-    enriched_count = 0
-    already_valid = 0
-    skipped_no_urls = 0
-    failed_to_scrape = 0
+    enriched_count     = 0
+    already_valid      = 0
+    skipped_no_urls    = 0
+    failed_http        = 0
+    failed_no_og       = 0
+    failed_invalid_img = 0
+    failed_skip        = 0
+    failed_exception   = 0
+    failed_patch       = 0
 
     for idx, msg in enumerate(messages, 1):
         msg_id = msg.get("id")
@@ -240,10 +304,12 @@ def main():
         embed = raw.get("embed") or {}
         title = embed.get("title") or "Unknown Product"
 
-        # Check existing images
+        # Check existing images (also handles embed.image as dict)
         curr_img = None
         if embed.get("images") and isinstance(embed["images"], list) and len(embed["images"]) > 0:
             curr_img = embed["images"][0]
+        elif embed.get("image"):
+            curr_img = embed["image"] if isinstance(embed["image"], str) else embed["image"].get("url")
         elif embed.get("thumbnail"):
             curr_img = embed["thumbnail"] if isinstance(embed["thumbnail"], str) else embed["thumbnail"].get("url")
         elif raw.get("product_image"):
@@ -253,7 +319,11 @@ def main():
             already_valid += 1
             continue
 
-        # Missing or invalid image - collect candidates
+        # ── IMAGE MISSING ──────────────────────────────────────────────
+        has_embed_imgs = bool(embed.get("images") or embed.get("image") or embed.get("thumbnail"))
+        print(f"[{idx}/{len(messages)}] 🔍 msg={msg_id} | '{title[:45]}' | embed_has_imgs={has_embed_imgs} | curr_img={repr(curr_img)[:60]}")
+
+        # Collect candidate product page URLs
         candidates = []
         if embed.get("title_url"):
             candidates.append(embed["title_url"])
@@ -263,35 +333,58 @@ def main():
             if u and u.startswith("http") and u not in candidates:
                 candidates.append(u)
 
+        # Also check fields for markdown links  [text](url)
+        for field in embed.get("fields", []):
+            val = field.get("value", "")
+            for _, u in re.findall(r'\[([^\]]+)\]\((https?://[^\)]+)\)', val):
+                if u not in candidates:
+                    candidates.append(u)
+
         if not candidates:
             skipped_no_urls += 1
+            print(f"   ⏭️  SKIP: No URLs found in embed for this message\n")
             continue
 
-        print(f"[{idx}/{len(messages)}] 🔍 Enriching msg {msg_id}: '{title[:40]}' ({len(candidates)} URLs)...")
-        found_image = resolve_candidate_image(candidates)
+        print(f"   🌐 Trying {len(candidates)} candidate URL(s)...")
+        found_image, failure_reason, log_lines = resolve_candidate_image(msg_id, candidates)
+
+        # Print per-URL diagnostic logs
+        for line in log_lines:
+            print(line)
 
         if found_image:
             ok = patch_message_image(msg_id, found_image, raw)
             if ok:
                 enriched_count += 1
-                print(f"   ✅ SUCCESS -> Patched with: {found_image[:70]}")
+                print(f"   ✅ SUCCESS -> Patched with: {found_image[:70]}\n")
             else:
-                failed_to_scrape += 1
-                print(f"   ⚠️ Found image but Supabase patch failed.")
+                failed_patch += 1
+                print(f"   ⚠️  Found image but Supabase PATCH failed.\n")
         else:
-            failed_to_scrape += 1
-            print(f"   ⏭️ No high-res og:image found on product pages.")
+            if failure_reason == REASON_HTTP_ERROR:      failed_http += 1
+            elif failure_reason == REASON_NO_OG_TAG:     failed_no_og += 1
+            elif failure_reason == REASON_INVALID_IMAGE: failed_invalid_img += 1
+            elif failure_reason == REASON_SKIP_PATTERN:  failed_skip += 1
+            elif failure_reason == REASON_EXCEPTION:     failed_exception += 1
+            elif failure_reason == REASON_INVALID_URL:   skipped_no_urls += 1
+            else:                                        failed_no_og += 1
+            print(f"   ❌ NO IMAGE FOUND  reason={failure_reason}\n")
 
         # Respectful throttle
         time.sleep(0.3)
 
     print("\n" + "=" * 65)
     print("🎉 BACKFILL COMPLETED SUMMARY:")
-    print(f"   - Total messages inspected: {len(messages)}")
-    print(f"   - Already had valid images:  {already_valid}")
-    print(f"   - Successfully enriched:     {enriched_count} 📸")
-    print(f"   - Skipped (no URLs found):   {skipped_no_urls}")
-    print(f"   - Unresolvable:              {failed_to_scrape}")
+    print(f"   - Total messages inspected:      {len(messages)}")
+    print(f"   - Already had valid images:       {already_valid}")
+    print(f"   - Successfully enriched:          {enriched_count} 📸")
+    print(f"   - Skipped (no URLs in embed):     {skipped_no_urls}")
+    print(f"   - Failed - HTTP error (blocked):  {failed_http}")
+    print(f"   - Failed - No OG tag in page:     {failed_no_og}")
+    print(f"   - Failed - OG image was junk:     {failed_invalid_img}")
+    print(f"   - Failed - Skip pattern (cart…):  {failed_skip}")
+    print(f"   - Failed - Network exception:     {failed_exception}")
+    print(f"   - Failed - Supabase PATCH error:  {failed_patch}")
     print("=" * 65)
 
 
