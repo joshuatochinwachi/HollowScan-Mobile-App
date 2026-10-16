@@ -167,7 +167,7 @@ stateDiagram-v2
 
 ## 5. Railway Deployment Compatibility
 
-### 5.1 Architecture of `backend/app.py`
+### 5.1 Architecture of `backend/app.py` on Railway
 The backend serving the mobile app (`/v1/feed`) is deployed independently on **Railway** from a separate repository:
 - **Zero Local Filesystem Dependency**: The backend does not expect `public/RP_logo.png` to exist locally.
 - **GitHub Raw Fetch**: At startup, `backend/app.py` downloads the reference logo from:  
@@ -176,6 +176,19 @@ The backend serving the mobile app (`/v1/feed`) is deployed independently on **R
 - **Dependencies**: `Pillow` is specified in `backend/requirements.txt` to ensure Railway buildpacks install image support automatically.
 - **Fallback URL**: Sanitized products are assigned:  
   `https://raw.githubusercontent.com/joshuatochinwachi/HollowScan-Mobile-App/main/public/no_image.png`
+
+### 5.2 Zero Frontend Changes (No App Store Re-Submission Needed)
+The entire sanitization mechanism is **100% backend-driven**:
+- **The Mobile App (iOS / Android) requires ZERO code changes and ZERO App Store / Google Play updates.**
+- When the mobile app requests `/v1/feed` or `/v1/product/detail`, the Railway backend processes the product, identifies the RP logo via pHash, and returns the sanitized JSON with:
+  ```json
+  "image": "https://raw.githubusercontent.com/.../public/no_image.png",
+  "thumbnail": "https://raw.githubusercontent.com/.../public/no_image.png"
+  ```
+- Because the mobile app already renders the URL provided in `"image"`, the existing apps in the hands of users instantly display the clean fallback image without updating their app.
+- Both the **core factory (`extract_product`)** and the **feed builder (`get_feed`)** sanitize the image before any JSON leaves the server.
+
+
 
 ---
 
