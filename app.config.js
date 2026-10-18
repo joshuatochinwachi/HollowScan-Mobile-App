@@ -33,6 +33,12 @@ module.exports = ({ config }) => {
     slug: "hollowscan_app",
     version: "1.0.5",
     orientation: "portrait",
+    updates: {
+      url: "https://u.expo.dev/7589d6ec-f110-43fc-8e06-ff5572a88bc5"
+    },
+    runtimeVersion: {
+      policy: "appVersion"
+    },
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     scheme: "hollowscan",
