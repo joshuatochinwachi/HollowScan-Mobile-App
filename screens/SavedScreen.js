@@ -58,6 +58,7 @@ const SavedScreen = ({ navigation }) => {
             return lowUrl.includes('placeholder') || 
                    lowUrl.includes('noimage') || 
                    lowUrl.includes('no-image') || 
+                   lowUrl.includes('no_image') || 
                    lowUrl.includes('notfound') || 
                    lowUrl.includes('comingsoon') || 
                    lowUrl.includes('coming-soon') || 
@@ -66,11 +67,17 @@ const SavedScreen = ({ navigation }) => {
                    lowUrl.includes('image-not-available');
         };
 
-        const imageSource = (data.image && !imageError && !isPlaceholder(data.image)) 
-            ? { uri: data.image } 
+        const selectedUrl = (data.image && !imageError && !isPlaceholder(data.image)) 
+            ? data.image 
             : (data.thumbnail && !imageError && !isPlaceholder(data.thumbnail)) 
-                ? { uri: data.thumbnail } 
-                : { uri: FALLBACK_IMAGE_URL };
+                ? data.thumbnail 
+                : FALLBACK_IMAGE_URL;
+
+        const finalUrl = selectedUrl && selectedUrl.toLowerCase().includes('no_image.png')
+            ? FALLBACK_IMAGE_URL
+            : selectedUrl;
+
+        const imageSource = { uri: finalUrl };
 
         return (
             <TouchableOpacity
